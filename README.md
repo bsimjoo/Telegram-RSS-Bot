@@ -72,7 +72,7 @@ Identify yourself as owner to bot. you can start a chat with your bot and then u
 ```
 
 # Reset databases
-If your about to reset database you can user `-r {database}` to reset `chats`, `config` or `all` databases.
+If your about to reset database you can use `-r {database}` to reset `chats`, `config` or `all` databases.
 
 **:warning: This action can not be undone**
 
