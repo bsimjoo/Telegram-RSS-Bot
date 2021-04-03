@@ -1,0 +1,73 @@
+{
+    "en-us":{
+        "wellcome": [
+            "Hi, I'm open-source [telegram RSS bot](https://github.com/bsimjoo/Telegram_RSS_bot) ",
+            "wroten by [BSimjoo](https://github.com/bsimjoo) and this is a default message\\.\n",
+            "*Owner can edit this message in strings\\.json file*"
+        ],
+        "group-intro": [
+            "Hi everybody, I'm open-source [telegram RSS bot](https://github.com/bsimjoo/Telegram_RSS_bot) ",
+            "wroten by [BSimjoo](https://github.com/bsimjoo) and this is a default message\\.\n",
+            "*Owner can edit this message in strings\\.json file*"
+        ],
+        "new-feed": "🆕♨️New post on weblog:",
+        "last-feed": "Last post of weblog",
+        "owner-help": [
+            "/gentoken Crate one-time token to add new admin\n"
+        ],
+        "admin-help": [
+            "/my_level  Check you access level\n\n",
+            "/state     Bot statistics\n\n",
+            "/listchats Get a list of all chats\n\n",
+            "/sendall   Send a message to all chats\n\n",
+            "/send_feed_toall Send last feed to all chats\n\n",
+            "/set_interval    Change the interval between each check for a new post"
+        ],
+        "help": [
+            "Users help:\n",
+            "/last_feed Get last post of weblog\n\n",
+            "/help      Show this help"
+        ],
+        "time-limit-error": "Sorry, I can not answer you right now because of time limition between two request, try again 2 mins later.",
+        "unknown": "Unknown command",
+        "unknown-msg": "Sorry, I can't chat with anyone right now!"
+    },
+    "fa-ir": {
+        "wellcome": [
+            "سلام، من ربات متن باز ",
+            "(Telegram RSS Bot)[https://github.com/bsimjoo/Telegram_RSS_bot] ",
+            "هستم و توسط ",
+            "[BSimjoo](https://github.com/bsimjoo)",
+            "نوشته شده ام\\. این پیام پیشفرض ربات است",
+            "صاحب این ربات می تواند این پیام را در فایل ",
+            "strings\\.json",
+            "تغییر دهد\\."
+        ],
+        "group-intro": [
+            "سلام، من ربات وبلاگ ",
+            "[PCWorms🐛💻](http://pcworms\\.blog\\.ir)",
+            " هستم و حالا اینجا چیکار می کنم؟\\! من اینجام تا شما رو از آخرین مطالب وبلاگ با خبر کنم"
+        ],
+        "new-feed": "🆕♨️پست جدید بر روی وبلاگ:",
+        "last-feed": "آخرین پست وبلاگ:",
+        "owner-help": [
+            "/gentoken ساخت توکن برای افزودن ادمین\n"
+        ],
+        "admin-help": [
+            "/my_level    آگاهی از سطح دسترسی\n\n",
+            "/state       آمار ربات\n\n",
+            "/listchats   نمایش تمام چت ها\n\n",
+            "/sendall     ارسال پیام به تمام چت های ربات\n\n",
+            "/send_feed_toall  ارسال آخرین پست وبلاگ به تمام چت ها\n\n",
+            "/set_interval     تعیین زمان بازبینی وبلاگ برای آخرین مطلب"
+        ],
+        "help": [
+            "راهنمای کاربران:\n",
+            "/last_feed  دریافت آخرین پست وبلاگ\n\n",
+            "/help       نمایش این راهنما"
+        ],
+        "time-limit-error": ".با عرض پوزش اکنون به دلیل محدودیت زمان بین تو درخواست نمی توانم به شما پاسخ دهم. بعد از دو دقیقه مجددا تلاش کنید",
+        "unknown": "متأسفم، دستوری که وارد کردید صحیح نیست",
+        "unknown-msg": "!متأسفم، در حال حاضر نمی توانم با کاربران چت کنم"
+    }
+}
