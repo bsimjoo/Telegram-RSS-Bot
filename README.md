@@ -1,4 +1,4 @@
-# Telegram-RSS-Bot
+# Telegram-RSS-Bot [![Build Status](https://travis-ci.com/bsimjoo/Telegram-RSS-Bot.svg?branch=main)](https://travis-ci.com/bsimjoo/Telegram-RSS-Bot)
 A simple telegram bot started for [pcworms.blog.ir](http://pcworms.blog.ir) weblog that read RSS Feeds and send newest feed to all chats(in this article chats = [all PVs, all GPs and all channels]).
 Administrators can also send photos, markdown or simple text messages to chats.
 
