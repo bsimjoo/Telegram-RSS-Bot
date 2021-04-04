@@ -1080,11 +1080,13 @@ if __name__ == '__main__':
             source = txn.get(
                 b'source', b'https://pcworms.blog.ir/rss/').decode()
                 
-        if '--bug-report' in argv:
+        if '--bug-report' in argv and len(argv) > 1:
+            port = int(argv[argv.index('--bug-report')+1])
             conf = {'global':
                 {
+                    'log.screen': False,
                     "server.socket_host": '0.0.0.0',
-                    "server.socket_port": 8072,
+                    "server.socket_port": port,
                     "environment": "production"
                 }
             }
