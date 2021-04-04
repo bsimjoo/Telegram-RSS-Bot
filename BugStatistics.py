@@ -14,7 +14,7 @@ class bug_statistic:
             temp = json.load(open(data_file_path))
             temp = temp.get(group,self.data)
             if temp['commit'] == commit:
-                self.data = data
+                self.data = temp
         __datas__[group]=self.data
             
     def log_bug(self, tag, message=None):
