@@ -18,7 +18,7 @@ from telegram.utils.helpers import DEFAULT_NONE
 from telegram.bot import Bot
 from telegram.ext import *
 from dateutil.parser import parse
-from datetime import datetime
+from datetime import datetime, timedelta
 from threading import Timer
 from BugStatistics import *
 
@@ -272,7 +272,7 @@ class BotHandler:
                     u.message.reply_text(self.get_string('time-limit-error'))
                     return
             self.send_feed(*self.read_feed(),msg_header = self.get_string('last-feed'),chat_ids = [u.effective_chat.id])
-            c.user_data['time'] = datetime.now() + datetime.timedelta(minutes = 2)      #The next request is available 2 minutes later
+            c.user_data['time'] = datetime.now() + timedelta(minutes = 2)      #The next request is available 2 minutes later
 
         @self.command
         def help(u: Update, c: CallbackContext):
