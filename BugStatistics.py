@@ -11,7 +11,7 @@ class bug_statistic:
         commit = subprocess.check_output(["git", "describe", "--always"]).strip().decode()
         self.data = {'commit':commit, 'tags':dict(), 'bugs':0}
         if exists(data_file_path):
-            __datas__ = json.load(open(data_file_path))
+            temp = json.load(open(data_file_path))
             temp = data.get(group,self.data)
             if temp['commit'] == commit:
                 self.data = data
