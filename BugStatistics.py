@@ -3,6 +3,7 @@ import json
 import subprocess
 from os.path import exists
 
+__datas__ = dict()
 class bug_statistic:
     def __init__(self, data_file_path, group='main'):
         self.data_file_path = data_file_path
@@ -10,10 +11,11 @@ class bug_statistic:
         commit = subprocess.check_output(["git", "describe", "--always"]).strip().decode()
         self.data = {'commit':commit, 'tags':dict(), 'bugs':0}
         if exists(data_file_path):
-            data = json.load(open(data_file_path))
-            data = data.get(group,self.data)
-            if data['commit'] == commit:
+            __datas__ = json.load(open(data_file_path))
+            temp = data.get(group,self.data)
+            if temp['commit'] == commit:
                 self.data = data
+        __datas__[group]=self.data
             
     def log_bug(self, tag, message=None):
         tags = self.data['tags']
@@ -24,12 +26,12 @@ class bug_statistic:
         self.data['bugs'] = len(tags)
 
     def dump(self):
-        json.dump({self.group:self.data}, open(self.data_file_path,'w'),indent = 2, ensure_ascii = False)
+        json.dump(__datas__, open(self.data_file_path,'w'),indent = 2, ensure_ascii = False)
 
     @cherrypy.expose
     @cherrypy.tools.json_out()
     def index(self):
-        return self.data
+        return __datas__
 
 def run_web_report(conf, statistics: bug_statistic, script_name='/'):
     cherrypy.config.update(conf)
