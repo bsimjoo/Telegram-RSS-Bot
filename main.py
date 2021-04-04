@@ -1058,7 +1058,7 @@ if __name__ == '__main__':
     with open(STRINGS_PATH, encoding = 'utf8') as fp:
         strings = json.load(fp)
 
-    bugs_reporter = bug_statistic('bugs.json','Telegram-RSS-Bot')
+    bugs_reporter = bug_statistic('bugs.json','Telegram_RSS_Bot')
 
     with env.begin(config_db, write = True) as txn:
         if '-t' in argv and len(argv) > 1:
