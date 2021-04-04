@@ -20,6 +20,7 @@ from telegram.ext import *
 from dateutil.parser import parse
 from datetime import datetime
 from threading import Timer
+from BugStatistics import *
 
 DB_PATH = './db'
 STRINGS_PATH = './strings.json'
@@ -86,7 +87,7 @@ class BotHandler:
     # ----------------------------------------------------
     # ----------------------[Init]------------------------
 
-    def __init__(self, logger: logging, Token, source, env, chats_db, config_db, strings: dict):
+    def __init__(self, logger: logging, Token, source, env, chats_db, config_db, strings: dict, bugs_reporter):
         #----[USE SOCKES]----
         import socks
         s = socks.socksocket()
@@ -110,6 +111,7 @@ class BotHandler:
         self.source = source
         self.interval = self.__get_data__('interval', 5*60, config_db)
         self.__check__ = True
+        self.bugs_reporter = bugs_reporter
 
         @self.command
         def start(update: Update, _: CallbackContext):
@@ -275,6 +277,7 @@ class BotHandler:
         @self.command
         def help(u: Update, c: CallbackContext):
             if u.effective_chat.id == self.ownerID:
+                raise NotImplementedError("test")
                 u.message.reply_text(self.get_string('owner-help'))
             if u.effective_chat.id in self.adminID:
                 u.message.reply_text(self.get_string('admin-help'))
@@ -836,6 +839,9 @@ class BotHandler:
             tb_list = traceback.format_exception(
                 None, context.error, context.error.__traceback__)
             tb_string = ''.join(tb_list)
+            line_no = context.error.__traceback__.tb_lineno
+            exception_type = str(context.error)
+            bugs_reporter.log_bug(f'{line_no}: {exception_type}',tb_string)
 
             # Build the message with some markup and additional information about what happened.
             # You might need to add some logic to deal with messages longer than the 4096 character limit.
@@ -1053,6 +1059,7 @@ if __name__ == '__main__':
     with open(STRINGS_PATH, encoding = 'utf8') as fp:
         strings = json.load(fp)
 
+    bugs_reporter = bug_statistic('bugs.json','Telegram-RSS-Bot')
 
     with env.begin(config_db, write = True) as txn:
         if '-t' in argv and len(argv) > 1:
@@ -1073,6 +1080,16 @@ if __name__ == '__main__':
         else:
             source = txn.get(
                 b'source', b'https://pcworms.blog.ir/rss/').decode()
+                
+        if '--bug-report' in argv:
+            conf = {'global':
+                {
+                    "server.socket_host": '0.0.0.0',
+                    "server.socket_port": 8072,
+                    "environment": "production"
+                }
+            }
+            run_web_report(conf, bugs_reporter)
 
     if token == '':
             logger.error("No Token, exiting")
@@ -1086,7 +1103,10 @@ if __name__ == '__main__':
         strings = strings['en-us']
 
     bot_handler = BotHandler(logger, token, source, env,
-                             chats_db, config_db, strings)
+                             chats_db, config_db, strings, bugs_reporter)
     bot_handler.run()
     bot_handler.idle()
+    stop_report()
+    bugs_reporter.dump()
     env.close()
+    
