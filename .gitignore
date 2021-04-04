@@ -131,3 +131,4 @@ dmypy.json
 .db/
 *.mdb
 strings.json
+bugs.json
