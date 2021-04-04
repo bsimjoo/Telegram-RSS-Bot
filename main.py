@@ -89,12 +89,12 @@ class BotHandler:
 
     def __init__(self, logger: logging, Token, source, env, chats_db, config_db, strings: dict, bugs_reporter):
         #----[USE SOCKES]----
-        import socks
-        s = socks.socksocket()
-        s.set_proxy(socks.SOCKS5, "localhost", 9090)
-        self.updater = Updater(Token, request_kwargs = {'proxy_url': 'socks5h://127.0.0.1:9090/'})
+        #import socks
+        #s = socks.socksocket()
+        #s.set_proxy(socks.SOCKS5, "localhost", 9090)
+        #self.updater = Updater(Token, request_kwargs = {'proxy_url': 'socks5h://127.0.0.1:9090/'})
         #-----[NO PROXY]-----
-        #self.updater = Updater(Token)
+        self.updater = Updater(Token)
         #--------------------
         self.bot = self.updater.bot
         self.dispatcher = self.updater.dispatcher
@@ -277,7 +277,6 @@ class BotHandler:
         @self.command
         def help(u: Update, c: CallbackContext):
             if u.effective_chat.id == self.ownerID:
-                raise NotImplementedError("test")
                 u.message.reply_text(self.get_string('owner-help'))
             if u.effective_chat.id in self.adminID:
                 u.message.reply_text(self.get_string('admin-help'))
