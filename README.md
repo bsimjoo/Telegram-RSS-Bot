@@ -1,4 +1,4 @@
-# Telegram-RSS-Bot [![Build Status](https://travis-ci.com/bsimjoo/Telegram-RSS-Bot.svg?branch=main)](https://travis-ci.com/bsimjoo/Telegram-RSS-Bot) [![License](https://img.shields.io/github/license/bsimjoo/Telegram-RSS-Bot)](LICENSE.md) ![Python v3.8](https://img.shields.io/badge/Python-v3.8-blue) [![Supported Bot API versions](https://img.shields.io/badge/Bot%20API-5.1-blue?logo=telegram)](https://core.telegram.org/bots/api-changelog)
+# Telegram-RSS-Bot [![Build Status](https://travis-ci.com/bsimjoo/Telegram-RSS-Bot.svg?branch=release)](https://travis-ci.com/bsimjoo/Telegram-RSS-Bot) [![License](https://img.shields.io/github/license/bsimjoo/Telegram-RSS-Bot)](LICENSE.md) ![Python v3.8](https://img.shields.io/badge/Python-v3.8-blue) [![Supported Bot API versions](https://img.shields.io/badge/Bot%20API-5.1-blue?logo=telegram)](https://core.telegram.org/bots/api-changelog)
 A simple telegram bot started for [pcworms.blog.ir](http://pcworms.blog.ir) weblog that read RSS Feeds and send newest feed to all chats(in this article chats = [all PVs, all GPs and all channels]).
 Administrators can also send photos, markdown or simple text messages to chats.
 
