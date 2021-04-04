@@ -12,7 +12,7 @@ class bug_statistic:
         self.data = {'commit':commit, 'tags':dict(), 'bugs':0}
         if exists(data_file_path):
             temp = json.load(open(data_file_path))
-            temp = data.get(group,self.data)
+            temp = temp.get(group,self.data)
             if temp['commit'] == commit:
                 self.data = data
         __datas__[group]=self.data
