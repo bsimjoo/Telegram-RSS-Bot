@@ -1,15 +1,29 @@
-# Telegram-RSS-Bot 
-[![Build Status](https://travis-ci.com/bsimjoo/Telegram-RSS-Bot.svg?branch=main)](https://travis-ci.com/bsimjoo/Telegram-RSS-Bot)
-[![GitHub issues by-label](https://img.shields.io/github/issues/bsimjoo/Telegram-RSS-Bot/bug)](https://github.com/bsimjoo/Telegram-RSS-Bot/labels/bug)
-[![found bugs](https://img.shields.io/badge/dynamic/json?url=http://de1.hashbang.sh:7191/json&label=Bugs+found&query=$.Telegram_RSS_Bot.bugs_count&color=red)](http://de1.hashbang.sh:7191)
-[![GitHub release (latest by date)](https://img.shields.io/github/v/release/bsimjoo/Telegram-RSS-Bot)](https://github.com/bsimjoo/Telegram-RSS-Bot/releases) 
-[![License](https://img.shields.io/github/license/bsimjoo/Telegram-RSS-Bot)](LICENSE.md)
-![Python v3.8](https://img.shields.io/badge/Python-v3.8-blue)
-[![Supported Bot API versions](https://img.shields.io/badge/Bot%20API-5.1-blue?logo=telegram)](https://core.telegram.org/bots/api-changelog)
-
-[![Telegram-RSS-Bot logo](Docs/logo.png)](.)
-
-A simple telegram bot started for [pcworms.blog.ir](http://pcworms.blog.ir) weblog that read RSS Feeds and send newest feed to all chats(in this article chats = [all PVs, all GPs and all channels]).
+<p align="center">
+ <img src="Docs/logo.png">
+ <h1 align="center">Telegram RSS Bot</h1>
+ <p align="center">
+ <a href="https://github.com/bsimjoo/Telegram-RSS-Bot/labels/bug">
+  <img alt="Bug issue" src="https://img.shields.io/github/issues/bsimjoo/Telegram-RSS-Bot/bug">
+ </a>
+ <a href="http://de1.hashbang.sh:7191">
+  <img alt="Reported bugs from pcworms_bot project" src="https://img.shields.io/badge/dynamic/json?url=http://de1.hashbang.sh:7191/json&label=Bugs+found&query=$.Telegram_RSS_Bot.bugs_count&color=red">
+ </a>
+ <a href="https://github.com/bsimjoo/Telegram-RSS-Bot/labels/todo">
+  <img src="https://img.shields.io/github/issues/bsimjoo/Telegram-RSS-Bot/todo?label=TODOs">
+ </a>
+ <a href="https://github.com/bsimjoo/Telegram-RSS-Bot/releases">
+  <img src="https://img.shields.io/github/v/release/bsimjoo/Telegram-RSS-Bot">
+ </a>
+ <a href="LICENSE.md">
+  <img src="https://img.shields.io/github/license/bsimjoo/Telegram-RSS-Bot">
+ </a>
+ <img src="https://img.shields.io/badge/Python-v3.8-blue">
+ <a href="https://core.telegram.org/bots/api-changelog">
+  <img src="https://img.shields.io/badge/Bot%20API-5.1-blue?logo=telegram">
+ </a>
+ </p>
+</p>
+A simple telegram bot that started for [pcworms.blog.ir](http://pcworms.blog.ir) weblog that read RSS Feeds and send newest feed to all chats(in this article chats = [all PVs, all GPs and all channels]).
 Administrators can also send photos, markdown or simple text messages to chats.
 
 *(Who runs server (call as Owner) can change source of feeds but default source is `http://pcworms.blog.ir/rss`)*
@@ -85,6 +99,11 @@ Identify yourself as owner to bot. you can start a chat with your bot and then u
 If your about to reset database you can use `-r {database}` to reset `chats`, `config` or `all` databases.
 
 **:warning: This action can not be undone**
+
+# Bug Reporter
+I added a module that reports exceptions or any custom message and counts them, then I can show the number of bugs through a running server and then track and fix them. The bug reporter is not enabled by default, but if you are interested you can save the bugs to a local file `bug.json` by running the server with the `-b` argument, or run the bug report http server with `-b {port number}` to see them through an http server (click on the "Bugs found" badge to see an example).
+
+**Notice** Don't forget to install `cherrypy` for online bug reporter using `python3 -m pip install cherrypy`
 
 ---
 Using [python-telegram-bot](https://github.com/python-telegram-bot/python-telegram-bot) api
