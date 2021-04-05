@@ -18,7 +18,7 @@ from telegram.utils.helpers import DEFAULT_NONE
 from telegram.bot import Bot
 from telegram.ext import *
 from dateutil.parser import parse
-from datetime import datetime
+from datetime import datetime, timedelta
 from threading import Timer
 
 DB_PATH = './db'
@@ -86,7 +86,7 @@ class BotHandler:
     # ----------------------------------------------------
     # ----------------------[Init]------------------------
 
-    def __init__(self, logger: logging, Token, source, env, chats_db, config_db, strings: dict):
+    def __init__(self, logger: logging, Token, source, env, chats_db, config_db, strings: dict, bug_reporter = None):
         #----[USE SOCKES]----
         import socks
         s = socks.socksocket()
@@ -110,6 +110,7 @@ class BotHandler:
         self.source = source
         self.interval = self.__get_data__('interval', 5*60, config_db)
         self.__check__ = True
+        self.reporter = bug_reporter if bug_reporter else None
 
         @self.command
         def start(update: Update, _: CallbackContext):
@@ -186,6 +187,7 @@ class BotHandler:
             if u.effective_user.id == self.ownerID:
                 u.message.reply_text(
                     'Oh, my lord. I respect you. new version2!')
+                raise NotImplementedError('test')
             elif u.effective_user.id in self.adminID:
                 u.message.reply_text('Oh, my admin. Hi, How are you?')
 
@@ -270,7 +272,7 @@ class BotHandler:
                     u.message.reply_text(self.get_string('time-limit-error'))
                     return
             self.send_feed(*self.read_feed(),msg_header = self.get_string('last-feed'),chat_ids = [u.effective_chat.id])
-            c.user_data['time'] = datetime.now() + datetime.timedelta(minutes = 2)      #The next request is available 2 minutes later
+            c.user_data['time'] = datetime.now() + timedelta(minutes = 2)      #The next request is available 2 minutes later
 
         @self.command
         def help(u: Update, c: CallbackContext):
@@ -836,6 +838,10 @@ class BotHandler:
             tb_list = traceback.format_exception(
                 None, context.error, context.error.__traceback__)
             tb_string = ''.join(tb_list)
+            line_no = context.error.__traceback__.tb_lineno
+            exception_type = type(context.error).__name__
+            if self.reporter:
+                self.reporter.bug(f'{line_no}: {exception_type}',tb_string)
 
             # Build the message with some markup and additional information about what happened.
             # You might need to add some logic to deal with messages longer than the 4096 character limit.
@@ -1053,6 +1059,57 @@ if __name__ == '__main__':
     with open(STRINGS_PATH, encoding = 'utf8') as fp:
         strings = json.load(fp)
 
+    bug_reporter = None
+    reporter = None
+    web_reporter = False
+
+    if '-b' in argv:
+        port = None
+        if len(argv)>1:
+            next_arg = argv[argv.index('-b')+1]
+            if not next_arg.startswith('-'):
+                if next_arg.isdigit():
+                    port = int(next_arg)
+                    port = port if 1023 < port < 65354 else None
+        import BugReporter
+        bug_reporter = BugReporter.BugReporter()
+        reporter = bug_reporter('Telegram_RSS_Bot')
+        
+        if port:
+            import cherrypy #user can ignore installing this mudole if now need for http reporting
+            conf = {'global':
+                {
+                    "server.socket_host": '0.0.0.0',
+                    "server.socket_port": port
+                },
+                'log.screen': False
+            }
+            import cherrypy
+            class root:
+                def __init__(self, reporter):
+                    self.reporter = reporter
+
+                @cherrypy.expose
+                def index(self):
+                    res = '''<html style="weidth:100%"><body><h1>Bugs</h1><hr>
+                    <b>what is this page?</b> this project is using a simple 
+                    web server to report bugs(exceptions) that found in a running program.
+                    <h2>Bug logs</h2><pre language="json" style="weidth:100%;overflow:auto">'''+html.escape(self.reporter.dumps())+'</pre></body></html>'
+                    return res
+
+                @cherrypy.expose
+                @cherrypy.tools.json_out()
+                def json(self):
+                    return self.reporter.reports
+
+            cherrypy.config.update(conf)
+            cherrypy.tree.mount(root(bug_reporter),'/')
+            cherrypy.engine.start()
+            web_reporter = True
+            
+            logger.info(f'reporting bugs at {port} and saving them in bugs.json')
+        else:
+            logger.info(f'saving bugs in {path}')
 
     with env.begin(config_db, write = True) as txn:
         if '-t' in argv and len(argv) > 1:
@@ -1073,6 +1130,7 @@ if __name__ == '__main__':
         else:
             source = txn.get(
                 b'source', b'https://pcworms.blog.ir/rss/').decode()
+                
 
     if token == '':
             logger.error("No Token, exiting")
@@ -1086,7 +1144,14 @@ if __name__ == '__main__':
         strings = strings['en-us']
 
     bot_handler = BotHandler(logger, token, source, env,
-                             chats_db, config_db, strings)
+                             chats_db, config_db, strings, reporter)
     bot_handler.run()
     bot_handler.idle()
+    if bug_reporter:
+        logger.info('saving bugs report')
+        bug_reporter.dump()
+    if web_reporter:
+        logger.info('stoping web reporter')
+        cherrypy.engine.stop()
     env.close()
+    
