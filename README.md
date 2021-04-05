@@ -80,7 +80,7 @@ git clone https://github.com/bsimjoo/Telegram_RSS_bot.git
 
 Change working directory to source directory and install requirements using this commands:
 ```
-cd ./pcworms_bot
+cd ./Telegram_RSS_Bot
 python3 -m pip install --user -r requirements.txt
 ```
 wait until installation finish without any error. (You can report errors to me)
