@@ -1,7 +1,7 @@
 # Telegram-RSS-Bot 
 [![Build Status](https://travis-ci.com/bsimjoo/Telegram-RSS-Bot.svg?branch=main)](https://travis-ci.com/bsimjoo/Telegram-RSS-Bot)
 [![GitHub issues by-label](https://img.shields.io/github/issues/bsimjoo/Telegram-RSS-Bot/bug)](https://github.com/bsimjoo/Telegram-RSS-Bot/labels/bug)
-[![found bugs](https://img.shields.io/badge/dynamic/json?url=http://de1.hashbang.sh:8072&label=Bugs+found&query=$.Telegram_RSS_Bot.bugs&color=red)](http://de1.hashbang.sh:8072)
+[![found bugs](https://img.shields.io/badge/dynamic/json?url=http://de1.hashbang.sh:7191/json&label=Bugs+found&query=$.Telegram_RSS_Bot.bugs_count&color=red)](http://de1.hashbang.sh:7191)
 [![GitHub release (latest by date)](https://img.shields.io/github/v/release/bsimjoo/Telegram-RSS-Bot)](https://github.com/bsimjoo/Telegram-RSS-Bot/releases) 
 [![License](https://img.shields.io/github/license/bsimjoo/Telegram-RSS-Bot)](LICENSE.md)
 ![Python v3.8](https://img.shields.io/badge/Python-v3.8-blue)
