@@ -187,7 +187,6 @@ class BotHandler:
             if u.effective_user.id == self.ownerID:
                 u.message.reply_text(
                     'Oh, my lord. I respect you. new version2!')
-                raise NotImplementedError('test')
             elif u.effective_user.id in self.adminID:
                 u.message.reply_text('Oh, my admin. Hi, How are you?')
 
