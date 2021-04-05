@@ -22,14 +22,15 @@
   <img src="https://img.shields.io/badge/Bot%20API-5.1-blue?logo=telegram">
  </a>
  </p>
+ <p align="center">
+ A simple telegram bot that started for <a href="http://pcworms.blog.ir">pcworms.blog.ir</a> weblog that read RSS Feeds and send newest feed to all chats(in this article chats = [all PVs, all GPs and all channels]).
+Administrators can also send photos, markdown or simple text messages to chats.</p>
 </p>
-A simple telegram bot that started for [pcworms.blog.ir](http://pcworms.blog.ir) weblog that read RSS Feeds and send newest feed to all chats(in this article chats = [all PVs, all GPs and all channels]).
-Administrators can also send photos, markdown or simple text messages to chats.
-
-*(Who runs server (call as Owner) can change source of feeds but default source is `http://pcworms.blog.ir/rss`)*
 
 ## Owner
 The person who runs bot-server and has telegram-bot token. He usually has access to source code and Databases.
+
+*Owner can change source of feeds but default source is `http://pcworms.blog.ir/rss` read [Installation](#installation)*
 
 ### How the owner is identified
 Owner (bot call him as lord!) can identify himself using the token he got from @botfather like this: `/start {bot-token}`
@@ -71,7 +72,7 @@ You can translate [default-strings.json](default-strings.json) file to add more 
 
 **Notice** Rename you custom strings file to `strings.json` to prevent git pull errors. (`strings.json` is ignored for your custom version)
 
-# Installtion:
+# Installation:
 First of all admin need to create a new bot using telegram @BotFather and keep Bot-Token safe. then Download Comprressed Source or use git clone
 ```bash
 git clone https://github.com/bsimjoo/Telegram_RSS_bot.git
