@@ -1076,14 +1076,6 @@ if __name__ == '__main__':
         
         if port:
             import cherrypy #user can ignore installing this mudole if now need for http reporting
-            conf = {'global':
-                {
-                    "server.socket_host": '0.0.0.0',
-                    "server.socket_port": port
-                },
-                'log.screen': False
-            }
-            import cherrypy
             class root:
                 def __init__(self, reporter, bug_reporter):
                     self.reporter = reporter
@@ -1110,8 +1102,17 @@ if __name__ == '__main__':
                 def json(self):
                     return self.bug_reporter.reports
 
-            cherrypy.config.update(conf)
+            
+            cherrypy.log.access_log.propagate = False
             cherrypy.tree.mount(root(reporter, bug_reporter),'/')
+            conf = {'global':
+                {
+                    "server.socket_host": '0.0.0.0',
+                    "server.socket_port": port,
+                    'log.screen': False
+                }
+            }
+            cherrypy.config.update(conf)
             cherrypy.engine.start()
             web_reporter = True
             
