@@ -1076,39 +1076,49 @@ if __name__ == '__main__':
         
         if port:
             import cherrypy #user can ignore installing this mudole if now need for http reporting
-            conf = {'global':
-                {
-                    "server.socket_host": '0.0.0.0',
-                    "server.socket_port": port
-                },
-                'log.screen': False
-            }
-            import cherrypy
             class root:
-                def __init__(self, reporter):
+                def __init__(self, reporter, bug_reporter):
                     self.reporter = reporter
+                    self.bug_reporter = bug_reporter
 
                 @cherrypy.expose
                 def index(self):
                     res = '''<html style="weidth:100%"><body><h1>Bugs</h1><hr>
                     <b>what is this page?</b> this project is using a simple 
                     web server to report bugs(exceptions) that found in a running program.
-                    <h2>Bug logs</h2><pre language="json" style="weidth:100%;overflow:auto">'''+html.escape(self.reporter.dumps())+'</pre></body></html>'
+                    <h2>Bug logs</h2><pre language="json" style="weidth:100%;overflow:auto">'''+html.escape(self.bug_reporter.dumps())+'</pre></body></html>'
                     return res
+
+                @cherrypy.expose
+                def build_state(self):
+                    cherrypy.response.headers['Content-Type'] = "image/svg+xml;charset=utf-8"
+                    if self.reporter.data['bugs_count']>0:
+                        return open('Docs/build faling.svg', 'rb')
+                    else:
+                        return open('Docs/build passing.svg', 'rb')
 
                 @cherrypy.expose
                 @cherrypy.tools.json_out()
                 def json(self):
-                    return self.reporter.reports
+                    return self.bug_reporter.reports
 
+            
+            cherrypy.log.access_log.propagate = False
+            cherrypy.tree.mount(root(reporter, bug_reporter),'/')
+            conf = {'global':
+                {
+                    "server.socket_host": '0.0.0.0',
+                    "server.socket_port": port,
+                    'log.screen': False
+                }
+            }
             cherrypy.config.update(conf)
-            cherrypy.tree.mount(root(bug_reporter),'/')
             cherrypy.engine.start()
             web_reporter = True
             
             logger.info(f'reporting bugs at {port} and saving them in bugs.json')
         else:
-            logger.info(f'saving bugs in {path}')
+            logger.info(f'saving bugs in bugs.json')
 
     with env.begin(config_db, write = True) as txn:
         if '-t' in argv and len(argv) > 1:
