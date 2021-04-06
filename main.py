@@ -88,12 +88,12 @@ class BotHandler:
 
     def __init__(self, logger: logging, Token, source, env, chats_db, config_db, strings: dict, bug_reporter = None):
         #----[USE SOCKES]----
-        import socks
-        s = socks.socksocket()
-        s.set_proxy(socks.SOCKS5, "localhost", 9090)
-        self.updater = Updater(Token, request_kwargs = {'proxy_url': 'socks5h://127.0.0.1:9090/'})
+        #import socks
+        #s = socks.socksocket()
+        #s.set_proxy(socks.SOCKS5, "localhost", 9090)
+        #self.updater = Updater(Token, request_kwargs = {'proxy_url': 'socks5h://127.0.0.1:9090/'})
         #-----[NO PROXY]-----
-        #self.updater = Updater(Token)
+        self.updater = Updater(Token)
         #--------------------
         self.bot = self.updater.bot
         self.dispatcher = self.updater.dispatcher
@@ -1110,6 +1110,7 @@ if __name__ == '__main__':
                     else:
                         badge['message'] = 'passing'
                         badge['color'] = 'success'
+                    return badge
 
                 @cherrypy.expose
                 @cherrypy.tools.json_out()
