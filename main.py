@@ -88,12 +88,12 @@ class BotHandler:
 
     def __init__(self, logger: logging, Token, source, env, chats_db, config_db, strings: dict, bug_reporter = None):
         #----[USE SOCKES]----
-        #import socks
-        #s = socks.socksocket()
-        #s.set_proxy(socks.SOCKS5, "localhost", 9090)
-        #self.updater = Updater(Token, request_kwargs = {'proxy_url': 'socks5h://127.0.0.1:9090/'})
+        import socks
+        s = socks.socksocket()
+        s.set_proxy(socks.SOCKS5, "localhost", 9090)
+        self.updater = Updater(Token, request_kwargs = {'proxy_url': 'socks5h://127.0.0.1:9090/'})
         #-----[NO PROXY]-----
-        self.updater = Updater(Token)
+        #self.updater = Updater(Token)
         #--------------------
         self.bot = self.updater.bot
         self.dispatcher = self.updater.dispatcher
@@ -1085,24 +1085,39 @@ if __name__ == '__main__':
             }
             import cherrypy
             class root:
-                def __init__(self, reporter):
+                def __init__(self, reporter, bug_reporter):
                     self.reporter = reporter
+                    self.bug_reporter = bug_reporter
 
                 @cherrypy.expose
                 def index(self):
                     res = '''<html style="weidth:100%"><body><h1>Bugs</h1><hr>
                     <b>what is this page?</b> this project is using a simple 
                     web server to report bugs(exceptions) that found in a running program.
-                    <h2>Bug logs</h2><pre language="json" style="weidth:100%;overflow:auto">'''+html.escape(self.reporter.dumps())+'</pre></body></html>'
+                    <h2>Bug logs</h2><pre language="json" style="weidth:100%;overflow:auto">'''+html.escape(self.bug_reporter.dumps())+'</pre></body></html>'
                     return res
 
                 @cherrypy.expose
                 @cherrypy.tools.json_out()
+                def build_state(self):
+                    badge = {
+                        "schemaVersion": 1,
+                        "label": "build"
+                    }
+                    if self.reporter.data['bugs_count']>0:
+                        badge['message'] = 'failing'
+                        badge['color'] = 'red'
+                    else:
+                        badge['message'] = 'passing'
+                        badge['color'] = 'success'
+
+                @cherrypy.expose
+                @cherrypy.tools.json_out()
                 def json(self):
-                    return self.reporter.reports
+                    return self.bug_reporter.reports
 
             cherrypy.config.update(conf)
-            cherrypy.tree.mount(root(bug_reporter),'/')
+            cherrypy.tree.mount(root(reporter, bug_reporter),'/')
             cherrypy.engine.start()
             web_reporter = True
             
