@@ -105,7 +105,7 @@ If your about to reset database you can use `-r {database}` to reset `chats`, `c
 **:warning: This action can not be undone**
 
 # Bug Reporter
-I added a module that reports exceptions or any custom message and counts them, then I can show the number of bugs through a running server and then track and fix them. The bug reporter is not enabled by default, but if you are interested you can save the bugs to a local file `bug.json` by running the server with the `-b` argument, or run the bug report http server with `-b {port number}` to see them through an http server (click on the "Bugs found" badge to see an example).
+I added a module that reports exceptions or any custom message and counts them, then I can show the number of bugs of a running server here and then track and fix them. The bug reporter is not enabled by default, but if you are interested you can save the bugs to a local file `bugs.json` by running the server with the `-b` argument, or run the bug reporter http server with `-b {port number}` to see them through an http server (click on the "Bugs found" badge to see an example).
 
 **Notice** Don't forget to install `cherrypy` for online bug reporter using `python3 -m pip install cherrypy`
 
