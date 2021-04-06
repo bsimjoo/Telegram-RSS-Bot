@@ -1118,7 +1118,7 @@ if __name__ == '__main__':
             
             logger.info(f'reporting bugs at {port} and saving them in bugs.json')
         else:
-            logger.info(f'saving bugs in {path}')
+            logger.info(f'saving bugs in bugs.json')
 
     with env.begin(config_db, write = True) as txn:
         if '-t' in argv and len(argv) > 1:
