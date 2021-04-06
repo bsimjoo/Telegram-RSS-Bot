@@ -1098,19 +1098,12 @@ if __name__ == '__main__':
                     return res
 
                 @cherrypy.expose
-                @cherrypy.tools.json_out()
                 def build_state(self):
-                    badge = {
-                        "schemaVersion": 1,
-                        "label": "build"
-                    }
+                    cherrypy.response.headers['Content-Type'] = "image/svg+xml;charset=utf-8"
                     if self.reporter.data['bugs_count']>0:
-                        badge['message'] = 'failing'
-                        badge['color'] = 'red'
+                        return open('Docs/build faling.svg', 'rb')
                     else:
-                        badge['message'] = 'passing'
-                        badge['color'] = 'success'
-                    return badge
+                        return open('Docs/build passing.svg', 'rb')
 
                 @cherrypy.expose
                 @cherrypy.tools.json_out()
