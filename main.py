@@ -1093,7 +1093,7 @@ if __name__ == '__main__':
                 def build_state(self):
                     cherrypy.response.headers['Content-Type'] = "image/svg+xml;charset=utf-8"
                     if self.reporter.data['bugs_count']>0:
-                        return open('Docs/build faling.svg', 'rb')
+                        return open('Docs/build failing.svg', 'rb')
                     else:
                         return open('Docs/build passing.svg', 'rb')
 
