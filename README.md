@@ -3,13 +3,13 @@
  <h1 align="center">Telegram RSS Bot</h1>
  <p align="center">
  <a href="http://de1.hashbang.sh:7191">
-  <img alt="Build state" src="http://de1.hashbang.sh:7191/build_state">
- </a>
- <a href="https://github.com/bsimjoo/Telegram-RSS-Bot/labels/bug">
-  <img alt="Bug issue" src="https://img.shields.io/github/issues-raw/bsimjoo/Telegram-RSS-Bot/bug?color=red">
+  <img alt="" src="https://img.shields.io/badge/dynamic/json?color=yellow&label=build&query=$.build&url=http://de1.hashbang.sh:7191/build_state">
  </a>
  <a href="http://de1.hashbang.sh:7191">
   <img alt="Reported bugs from pcworms_bot project" src="https://img.shields.io/badge/dynamic/json?url=http://de1.hashbang.sh:7191/json&label=Bugs+found&query=$.Telegram_RSS_Bot.bugs_count&color=red">
+ </a>
+ <a href="https://github.com/bsimjoo/Telegram-RSS-Bot/labels/bug">
+  <img alt="Bug issue" src="https://img.shields.io/github/issues-raw/bsimjoo/Telegram-RSS-Bot/bug?color=red">
  </a>
  <a href="https://github.com/bsimjoo/Telegram-RSS-Bot/labels/todo">
   <img src="https://img.shields.io/github/issues-raw/bsimjoo/Telegram-RSS-Bot/todo?color=orange&label=TODOs">
