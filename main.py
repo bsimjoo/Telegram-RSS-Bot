@@ -88,12 +88,12 @@ class BotHandler:
 
     def __init__(self, logger: logging, Token, source, env, chats_db, config_db, strings: dict, bug_reporter = None):
         #----[USE SOCKES]----
-        #import socks
-        #s = socks.socksocket()
-        #s.set_proxy(socks.SOCKS5, "localhost", 9090)
-        #self.updater = Updater(Token, request_kwargs = {'proxy_url': 'socks5h://127.0.0.1:9090/'})
+        import socks
+        s = socks.socksocket()
+        s.set_proxy(socks.SOCKS5, "localhost", 9090)
+        self.updater = Updater(Token, request_kwargs = {'proxy_url': 'socks5h://127.0.0.1:9090/'})
         #-----[NO PROXY]-----
-        self.updater = Updater(Token)
+        #self.updater = Updater(Token)
         #--------------------
         self.bot = self.updater.bot
         self.dispatcher = self.updater.dispatcher
@@ -1090,12 +1090,21 @@ if __name__ == '__main__':
                     return res
 
                 @cherrypy.expose
+                @cherrypy.tools.json_out()
                 def build_state(self):
-                    cherrypy.response.headers['Content-Type'] = "image/svg+xml;charset=utf-8"
-                    if self.reporter.data['bugs_count']>0:
-                        return open('Docs/build faling.svg', 'rb')
+                    badge={
+                        "schemaVersion": 1,
+                        "label": "hello",
+                        "message": "sweet world",
+                        "color": "orange"
+                    }
+                    if self.reporter.data['bugs-count']>0:
+                        badge['message']='failing'
+                        badge['color']='red'
                     else:
-                        return open('Docs/build passing.svg', 'rb')
+                        badge['message']='passing'
+                        badge['color']='success'
+                    return badge
 
                 @cherrypy.expose
                 @cherrypy.tools.json_out()
@@ -1105,20 +1114,13 @@ if __name__ == '__main__':
             
             cherrypy.log.access_log.propagate = False
             cherrypy.tree.mount(root(reporter, bug_reporter),'/')
-            conf = {'global':
-                {
-                    "server.socket_host": '0.0.0.0',
-                    "server.socket_port": port,
-                    'log.screen': False
-                }
-            }
-            cherrypy.config.update(conf)
+            cherrypy.config.update("./Bug-reporter.conf")
             cherrypy.engine.start()
             web_reporter = True
             
             logger.info(f'reporting bugs at {port} and saving them in bugs.json')
         else:
-            logger.info(f'saving bugs in {path}')
+            logger.info(f'saving bugs in bugs.json')
 
     with env.begin(config_db, write = True) as txn:
         if '-t' in argv and len(argv) > 1:

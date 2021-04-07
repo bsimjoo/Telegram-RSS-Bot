@@ -132,3 +132,6 @@ dmypy.json
 *.mdb
 strings.json
 bugs.json
+*.pem
+*.cert
+*.conf
