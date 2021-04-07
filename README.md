@@ -4,8 +4,6 @@
  <p align="center">
  <a href="http://de1.hashbang.sh:7191">
   <img alt="" src="https://img.shields.io/badge/dynamic/json?url=http://de1.hashbang.sh:7191/json&label=build&query=$.Telegram_RSS_Bot.build&color=white">
- </a>
- <a href="http://de1.hashbang.sh:7191">
   <img alt="Reported bugs from pcworms_bot project" src="https://img.shields.io/badge/dynamic/json?url=http://de1.hashbang.sh:7191/json&label=Bugs+found&query=$.Telegram_RSS_Bot.bugs_count&color=red">
  </a>
  <a href="https://github.com/bsimjoo/Telegram-RSS-Bot/labels/bug">
@@ -16,6 +14,7 @@
  </a>
  <a href="https://github.com/bsimjoo/Telegram-RSS-Bot/releases">
   <img src="https://img.shields.io/github/v/release/bsimjoo/Telegram-RSS-Bot">
+  <img alt="GitHub release (latest SemVer including pre-releases)" src="https://img.shields.io/github/v/release/bsimjoo/Telegram-RSS-Bot?include_prereleases&label=pre-release">
  </a>
  <a href="LICENSE.md">
   <img src="https://img.shields.io/github/license/bsimjoo/Telegram-RSS-Bot">
