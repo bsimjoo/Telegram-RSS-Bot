@@ -1038,7 +1038,7 @@ if __name__ == '__main__':
     logger = logging.getLogger()
     env = lmdb.open(DB_PATH, max_dbs = 3)
 
-    if '-r' in argv and len(argv) > 1:
+    if '-r' in argv and len(argv) > 2:
         db_to_drop = argv[argv.index('-r')+1]
         if db_to_drop in ('config', 'chats', 'all'):
             answer = input(f'Are you sure you want to Remove "{db_to_drop}" databases?(yes/any)')
@@ -1079,7 +1079,7 @@ if __name__ == '__main__':
         
         if '--hbr' in argv:
             config = "custom-config.conf"
-            if len(argv)>1:
+            if len(argv)>2:
                 next_arg = argv[argv.index('--hbr')+1]
                 if not next_arg.startswith('-'):
                     config = next_arg
@@ -1159,19 +1159,19 @@ if __name__ == '__main__':
             logger.info(f'saving bugs in bugs.json')
 
     with env.begin(config_db, write = True) as txn:
-        if '-t' in argv and len(argv) > 1:
+        if '-t' in argv and len(argv) > 2:
             token = argv[argv.index('-t')+1]
             txn.put(b'token', token.encode())
         else:
             token = txn.get(b'token', b'').decode()
         
-        if '-l' in argv and len(argv) > 1:
+        if '-l' in argv and len(argv) > 2:
             language = argv[argv.index('-l')+1].lower()
             txn.put(b'language', token.encode())
         else:
             language = txn.get(b'language', b'').decode()
 
-        if '-s' in argv and len(argv) > 1:
+        if '-s' in argv and len(argv) > 2:
             source = argv[argv.index('-s')+1]
             txn.put(b'source', source.encode())
         else:
