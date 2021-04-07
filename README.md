@@ -3,7 +3,7 @@
  <h1 align="center">Telegram RSS Bot</h1>
  <p align="center">
  <a href="http://de1.hashbang.sh:7191">
-  <img alt="Build state" src="http://de1.hashbang.sh:7191/build_state">
+  <img alt="Build state" src="http://de1.hashbang.sh:7192/build_state">
  </a>
  <a href="https://github.com/bsimjoo/Telegram-RSS-Bot/labels/bug">
   <img alt="Bug issue" src="https://img.shields.io/github/issues-raw/bsimjoo/Telegram-RSS-Bot/bug?color=red">
