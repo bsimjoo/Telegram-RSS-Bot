@@ -8,15 +8,18 @@ class __reporter__:
         if data.get('commit') == commit:
             self.data = data
         else:
-            self.data = {'commit':commit, 'tags':dict(), 'bugs_count':0}
+            self.data = {'commit':commit, 'tags':dict(), 'bugs_count':0, 'build':'passing'}
         
-    def bug(self, tag, message=None):
+    def bug(self, tag, message=None, custom_prop={}):
         tags = self.data['tags']
         current_tag = tags.get(tag, {'count':0})
         current_tag['count'] += 1
         current_tag['message'] = message
+        current_tag['custom-prop'] = custom_prop
         tags[tag] = current_tag
         self.data['bugs_count'] = len(tags)
+        if len(tags):
+            self.data['build']='failing'
 
 class BugReporter:
     def __init__(self, file_path = 'bugs.json'):
