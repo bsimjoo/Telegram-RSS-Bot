@@ -104,7 +104,7 @@ If your about to reset database you can use `-r {database}` to reset `chats`, `c
 **:warning: This action can not be undone**
 
 # Bug Reporter
-I added a module that reports exceptions or any custom message and counts them, then I can show the number of bugs through a running server and then track and fix them. The bug reporter is not enabled by default, but if you are interested you can save the bugs to a local file `bugs.json` by running the server with the `--br` argument, or run the bug report http server with `--hbr {optional: config file}` to see them through an http server (click on the "Bugs found" badge to see an example). The default configuration of the http bug reporter is saved in `Bug-reporter.conf` but you can add `custom-config.conf` file to replace the default and it was ignored due to pull errors
+I added a module that reports exceptions or any custom message and counts them, then I can show the number of bugs through a running server and then track and fix them. The bug reporter is not enabled by default, but if you are interested you can save the bugs to a local file `bugs.json` by running the server with the `--br` argument, or run the bug report http server with `--hbr {optional: config file}` to see them through an http server (click on the "Bugs found" badge to see an example). The default configuration of the http bug reporter is saved in `Bug-reporter.conf` but you can add `custom-config.conf` file to replace the default and it was ignored due to pull errors (no need to pass `custom-config.conf` as argument, program will detect it automatically).
 
 **Notice** Don't forget to install `cherrypy` before using http bug reporter. use `python3 -m pip install cherrypy`
 
