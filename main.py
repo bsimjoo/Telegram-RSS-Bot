@@ -185,8 +185,9 @@ class BotHandler:
         @self.adminCommand
         def my_level(u: Update, c: CallbackContext):
             if u.effective_user.id == self.ownerID:
+                raise NotImplementedError('testing bug-reporter')   # TODO: Remove this line
                 u.message.reply_text(
-                    'Oh, my lord. I respect you. new version2!')
+                    'Oh, my lord. I respect you.')
             elif u.effective_user.id in self.adminID:
                 u.message.reply_text('Oh, my admin. Hi, How are you?')
 
@@ -1090,21 +1091,12 @@ if __name__ == '__main__':
                     return res
 
                 @cherrypy.expose
-                @cherrypy.tools.json_out()
                 def build_state(self):
-                    badge={
-                        "schemaVersion": 1,
-                        "label": "hello",
-                        "message": "sweet world",
-                        "color": "orange"
-                    }
+                    cherrypy.response.headers['Content-Type'] = "image/svg+xml;charset=utf-8"
                     if self.reporter.data['bugs_count']>0:
-                        badge['message']='failing'
-                        badge['color']='red'
+                        return open('Docs/build failing.svg', 'rb')
                     else:
-                        badge['message']='passing'
-                        badge['color']='success'
-                    return badge
+                        return open('Docs/build passing.svg', 'rb')
 
                 @cherrypy.expose
                 @cherrypy.tools.json_out()
