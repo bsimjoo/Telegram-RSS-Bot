@@ -185,7 +185,6 @@ class BotHandler:
         @self.adminCommand
         def my_level(u: Update, c: CallbackContext):
             if u.effective_user.id == self.ownerID:
-                raise NotImplementedError('testing bug-reporter')   # TODO: Remove this line
                 u.message.reply_text(
                     'Oh, my lord. I respect you.')
             elif u.effective_user.id in self.adminID:
@@ -838,10 +837,14 @@ class BotHandler:
             tb_list = traceback.format_exception(
                 None, context.error, context.error.__traceback__)
             tb_string = ''.join(tb_list)
-            line_no = context.error.__traceback__.tb_lineno
+            tb = context.error.__traceback__
+            s = traceback.extract_tb(tb)
+            f = s[-1]
+            lineno = f.lineno
+            filename = f.filename
             exception_type = type(context.error).__name__
             if self.reporter:
-                self.reporter.bug(f'{line_no}: {exception_type}',tb_string)
+                self.reporter.bug(f'{filename}@L{lineno}: {exception_type}',tb_string, {'line':lineno, 'file':filename})
 
             # Build the message with some markup and additional information about what happened.
             # You might need to add some logic to deal with messages longer than the 4096 character limit.
@@ -1019,11 +1022,17 @@ class BotHandler:
 if __name__ == '__main__':
     argv = sys.argv
     if '-h' in argv:
-        print(
-            """PCWorms RSS telegram bot usage
-\t-t <token>\tspecify bot token for first use. Token will save in db/config/token for future use.
-\t-s <feeds url>\tdetermine feeds source url. (for first time)
-""")
+        print('Open-source Telegram-RSS-Bot by BSimjoo\n'+\
+            'https://github.com/bsimjoo/Telegram-RSS-Bot\n\n'+
+            'Usage:\n'+
+            '-t <token>\tspecify bot token for first use.\n'+\
+            '-s <feeds url>\tdetermine feeds source url. (for first time)\n'+\
+            '--br\tuse offline bug reporter. save all found error in bugs.json\n'+\
+            '--hbr <optional:config>\t use a http server to report bugs. if config file'+\
+            ' didn\'t specified, program will use "bug-reporter.conf" or "custom-config.conf" as config file\n\n'+\
+            'Caution: If you want to use http-bug-reporter pelase first make sure that cherrypy is installed or install it with:\n'+\
+            'python3 pip install cherrypy'
+            )
     logging.basicConfig(
         format = '%(asctime)s - %(name)s - %(levelname)s - %(message)s', level = logging.INFO)
     logger = logging.getLogger()
@@ -1063,20 +1072,27 @@ if __name__ == '__main__':
     reporter = None
     web_reporter = False
 
-    if '-b' in argv:
-        port = None
-        if len(argv)>1:
-            next_arg = argv[argv.index('-b')+1]
-            if not next_arg.startswith('-'):
-                if next_arg.isdigit():
-                    port = int(next_arg)
-                    port = port if 1023 < port < 65354 else None
+    if '--br' in argv or '--hbr' in argv:
         import BugReporter
         bug_reporter = BugReporter.BugReporter()
         reporter = bug_reporter('Telegram_RSS_Bot')
         
-        if port:
-            import cherrypy #user can ignore installing this mudole if now need for http reporting
+        if '--wbr' in argv:
+            config = "custom-config.conf"
+            if len(argv)>1:
+                next_arg = argv[argv.index('--wbr')+1]
+                if not next_arg.startswith('-'):
+                    config = next_arg
+            
+            if not os.path.exists(config):
+                config = "Bug-reporter.conf"
+            
+            try:
+                import cherrypy #user can ignore installing this mudole just if doesn't need reporting on http
+            except ModuleNotFoundError:
+                logger.error('Cherrypy not found, please first make sure that it is installed and then use http-bug-reporter')
+                exit()
+
             class root:
                 def __init__(self, reporter, bug_reporter):
                     self.reporter = reporter
@@ -1084,19 +1100,47 @@ if __name__ == '__main__':
 
                 @cherrypy.expose
                 def index(self):
-                    res = '''<html style="weidth:100%"><body><h1>Bugs</h1><hr>
-                    <b>what is this page?</b> this project is using a simple 
-                    web server to report bugs(exceptions) that found in a running program.
-                    <h2>Bug logs</h2><pre language="json" style="weidth:100%;overflow:auto">'''+html.escape(self.bug_reporter.dumps())+'</pre></body></html>'
-                    return res
+                    res = '''<html>
+                    <head>
+                    <style>
+                        html, body{
+                            background-color: #17202a;
+                            color:  #d6eaf8;
+                        }
+                        pre, ssh-pre{
+                            width:80%;
+                            max-height: 30%;
+                            margin: auto;
+                            background-color: #f39c12;
+                            color:  #641e16;
+                            border-radius: 10px;
+                            padding: 10px;
+                            overflow-x: auto;
+                            white-space: pre-wrap;
+                            word-wrap: break-word;
+                        }
+                    </style>
+                    </head>
+                    <body><h1>Bugs</h1><hr>
+                    <p><b>What is this page?</b> This project uses a simple web
+                     server to report bugs (exceptions) in a running application.
+                    <p><b>What are groups?</b> Because of this project can be forked
+                     so each fork can have its own bugs. Although it is sometimes
+                     difficult to distinguish between original project bugs and forged
+                     projects, groups are a simple way to separate these bugs.<p>'''
+                    for group,reporter in bug_reporter.reports.items():
+                        res+=f'<h2>Group: {group}</h2><hr>'
+                        for tag, content in reporter['tags'].items():
+                            lineno = content['custom-prop']['line']
+                            filename = content['custom-prop']['file']
+                            link = ''
+                            if os.path.exists(filename):
+                                link = f' <a href="https://github.com/bsimjoo/Telegram-RSS-Bot/blob/main/{filename}#L{lineno}"> 🔸{filename} L{lineno}</a></h3>'
+                            res+=f'<h3>&bull;Tag <kbd>"{tag}"</kbd> Count: {content["count"]}{link}</h3>'
+                            res+=f'<pre>{content["message"]}</pre>'
 
-                @cherrypy.expose
-                @cherrypy.tools.json_out()
-                def build_state(self):
-                    if self.reporter.data['bugs_count']>0:
-                        return {'build':'failing'}
-                    else:
-                        return {'build':'passing'}
+                    res+='<h3 align="center"><a href="/json">Raw JSON</a></h3></body></html>'
+                    return res
 
                 @cherrypy.expose
                 @cherrypy.tools.json_out()
@@ -1106,11 +1150,11 @@ if __name__ == '__main__':
             
             cherrypy.log.access_log.propagate = False
             cherrypy.tree.mount(root(reporter, bug_reporter),'/')
-            cherrypy.config.update("./Bug-reporter.conf")
+            cherrypy.config.update(config)
             cherrypy.engine.start()
-            web_reporter = True
+            http_reporter = True
             
-            logger.info(f'reporting bugs at {port} and saving them in bugs.json')
+            logger.info(f'reporting bugs with http server and saving them as bugs.json')
         else:
             logger.info(f'saving bugs in bugs.json')
 
@@ -1153,8 +1197,8 @@ if __name__ == '__main__':
     if bug_reporter:
         logger.info('saving bugs report')
         bug_reporter.dump()
-    if web_reporter:
-        logger.info('stoping web reporter')
+    if http_reporter:
+        logger.info('stoping http reporter')
         cherrypy.engine.stop()
     env.close()
     
