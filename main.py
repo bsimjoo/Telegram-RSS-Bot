@@ -1070,17 +1070,17 @@ if __name__ == '__main__':
 
     bug_reporter = None
     reporter = None
-    web_reporter = False
+    http_reporter = False
 
     if '--br' in argv or '--hbr' in argv:
         import BugReporter
         bug_reporter = BugReporter.BugReporter()
         reporter = bug_reporter('Telegram_RSS_Bot')
         
-        if '--wbr' in argv:
+        if '--hbr' in argv:
             config = "custom-config.conf"
             if len(argv)>1:
-                next_arg = argv[argv.index('--wbr')+1]
+                next_arg = argv[argv.index('--hbr')+1]
                 if not next_arg.startswith('-'):
                     config = next_arg
             
@@ -1143,17 +1143,6 @@ if __name__ == '__main__':
                     return res
 
                 @cherrypy.expose
-<<<<<<< HEAD
-                def build_state(self):
-                    cherrypy.response.headers['Content-Type'] = "image/svg+xml;charset=utf-8"
-                    if self.reporter.data['bugs_count']>0:
-                        return open('Docs/build failing.svg', 'rb')
-                    else:
-                        return open('Docs/build passing.svg', 'rb')
-
-                @cherrypy.expose
-=======
->>>>>>> develop
                 @cherrypy.tools.json_out()
                 def json(self):
                     return self.bug_reporter.reports
