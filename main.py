@@ -1091,12 +1091,12 @@ if __name__ == '__main__':
                     return res
 
                 @cherrypy.expose
+                @cherrypy.tools.json_out()
                 def build_state(self):
-                    cherrypy.response.headers['Content-Type'] = "image/svg+xml;charset=utf-8"
                     if self.reporter.data['bugs_count']>0:
-                        return open('Docs/build failing.svg', 'rb')
+                        return {'build':'failing'}
                     else:
-                        return open('Docs/build passing.svg', 'rb')
+                        return {'build':'passing'}
 
                 @cherrypy.expose
                 @cherrypy.tools.json_out()
