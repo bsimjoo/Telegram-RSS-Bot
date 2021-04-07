@@ -3,7 +3,7 @@
  <h1 align="center">Telegram RSS Bot</h1>
  <p align="center">
  <a href="http://de1.hashbang.sh:7191">
-  <img alt="" src="https://img.shields.io/badge/dynamic/json?color=yellow&label=build&query=$.build&url=http://de1.hashbang.sh:7191/build_state">
+  <img alt="" src="https://img.shields.io/badge/dynamic/json?url=http://de1.hashbang.sh:7191/json&label=build&query=$.Telegram_RSS_Bot.build&color=white">
  </a>
  <a href="http://de1.hashbang.sh:7191">
   <img alt="Reported bugs from pcworms_bot project" src="https://img.shields.io/badge/dynamic/json?url=http://de1.hashbang.sh:7191/json&label=Bugs+found&query=$.Telegram_RSS_Bot.bugs_count&color=red">
