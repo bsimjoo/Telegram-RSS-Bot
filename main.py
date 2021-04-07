@@ -1098,7 +1098,7 @@ if __name__ == '__main__':
                         "message": "sweet world",
                         "color": "orange"
                     }
-                    if self.reporter.data['bugs-count']>0:
+                    if self.reporter.data['bugs_count']>0:
                         badge['message']='failing'
                         badge['color']='red'
                     else:
