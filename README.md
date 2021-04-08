@@ -63,7 +63,7 @@ Then Owner Receive a message with admin information and accept/decline button.
 - *No more option*
 
 ---
-`/help` command will give you a list of all available command related to user level.
+`/help` command will give you a list of all available command related to your access.
 
 # Languages
 Available languages:
