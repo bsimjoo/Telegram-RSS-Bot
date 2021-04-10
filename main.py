@@ -86,7 +86,6 @@ class BotHandler:
 
     def __init__(
         self,
-        logger: logging,
         Token,
         source,
         env,
@@ -105,7 +104,6 @@ class BotHandler:
         self.bot = self.updater.bot
         self.dispatcher = self.updater.dispatcher
         self.token = Token
-        self.logger = logger
         self.env = env
         self.chats_db = chats_db
         self.data_db = data_db
@@ -290,7 +288,7 @@ class BotHandler:
 
         @self.command
         def stop(u: Update, c: CallbackContext):
-            logger.info(
+            logging.info(
                 f'I had been removed from a chat. chat-id:{u.effective_chat.id}')
             with self.env.begin(self.chats_db, write = True) as txn:
                 if txn.get(str(u.effective_chat.id).encode()):  # check exist
@@ -401,7 +399,7 @@ class BotHandler:
 
                     c.user_data['prev-dict'][msg_id] = msg
                 else:
-                    logger.error('UNKNOWN MSG TYPE FOUND\n'+str(msg))
+                    logging.error('UNKNOWN MSG TYPE FOUND\n'+str(msg))
                     c.bot.send_message(self.ownerID, 'UNKNOWN MSG TYPE FOUND\n'+str(msg))
 
             if c.user_data.get('had-error'):
@@ -489,7 +487,7 @@ class BotHandler:
                     )
             else:
                 #Log this bug
-                logger.error('UNKNOWN MSG TYPE FOUND\n'+str(msg))
+                logging.error('UNKNOWN MSG TYPE FOUND\n'+str(msg))
                 c.bot.send_message(self.ownerID, 'UNKNOWN MSG TYPE FOUND\n'+str(msg))
 
             if c.user_data.get('had-error'):
@@ -546,7 +544,7 @@ class BotHandler:
                 )
             else:
                 #report bug
-                logger.error('UNKNOWN MSG TYPE FOUND\n'+str(msg))
+                logging.error('UNKNOWN MSG TYPE FOUND\n'+str(msg))
                 c.bot.send_message(self.ownerID, 'UNKNOWN MSG TYPE FOUND\n'+str(msg))
 
             if c.user_data.get('had-error'):
@@ -616,7 +614,7 @@ class BotHandler:
                 return self.STATE_ADD
             query.answer(
                 '✅ Done\nSending message to all users, goups and channels', show_alert = True)
-            self.logger.info('Sending message to chats')
+            logging.info('Sending message to chats')
             c.user_data['last-message'].delete()
             c.user_data['last-message'] = self.bot.send_message(u.effective_chat.id,
             '✅ Done\nSending message to all users, goups and channels')
@@ -706,7 +704,7 @@ class BotHandler:
 
         def unknown_query(u: Update, c: CallbackContext):
             query = u.callback_query
-            self.logger.warning('unknown query, query data:'+query.data)
+            logging.warning('unknown query, query data:'+query.data)
             query.answer("❌ ERROR\nUnknown answer", show_alert = True,)
 
         def cancel(state) -> typing.Callable:
@@ -836,7 +834,7 @@ class BotHandler:
         def error_handler(update: object, context: CallbackContext) -> None:
             """Log the error and send a telegram message to notify the developer."""
             # Log the error before we do anything else, so we can see it even if something breaks.
-            logger.error(msg = "Exception while handling an update:",
+            logging.error(msg = "Exception while handling an update:",
                          exc_info = context.error)
 
             # traceback.format_exception returns the usual python message about an exception, but as a
@@ -967,7 +965,7 @@ class BotHandler:
                         )
 
     def iter_all_chats(self):
-        self.logger.info('sending last feed to users')
+        logging.info('sending last feed to users')
         with env.begin(self.chats_db) as txn:
             for key, value in txn.cursor():
                 yield key.decode()
@@ -1050,7 +1048,6 @@ if __name__ == '__main__':
         format = '%(asctime)s - %(name)s - %(levelname)s - %(message)s',
         filename=file_name,
         level = logging._nameToLevel[main_config.get('log-level','info')])
-    logger = logging.getLogger()
 
     env = lmdb.open(main_config.get('db-path','db.lmdb'), max_dbs = 3)
     chats_db = env.open_db(b'chats')
@@ -1075,7 +1072,7 @@ if __name__ == '__main__':
         with open(strings, encoding = 'utf8') as fp:
             strings = json.load(fp)
     else:
-        logger.error('Strings file not found')
+        logging.error('Strings file not found')
         exit(1)
 
     #first try to get configured language, if not configured try to get "en-us"
@@ -1086,9 +1083,9 @@ if __name__ == '__main__':
     if not strings and os.path.exists('default-strings.json'):
         with open('default-strings.json', encoding = 'utf8') as fp:
             strings = json.load(fp)['en-us']
-            logger.warning('Language or configuration not found, using default "en-us" language')
+            logging.warning('Language or configuration not found, using default "en-us" language')
     else:
-        logger.error('Unable to read strings file. Can not find specified language in your strings file and Default strings is missed. exiting...')
+        logging.error('Unable to read strings file. Can not find specified language in your strings file and Default strings is missed. exiting...')
         exit(1)
 
     bug_reporter = None
@@ -1167,30 +1164,30 @@ if __name__ == '__main__':
                 
 
             except ModuleNotFoundError:
-                logger.error('Cherrypy module not found, please first make sure that it is installed and then use http-bug-reporter')
+                logging.error('Cherrypy module not found, please first make sure that it is installed and then use http-bug-reporter')
                 logging.info('Can not run http bug reporter, skipping http, saving bugs in bugs.json')
             except Exception as Argument:
-                logging.exception("Error occured while running http server")     #TODO: use "logging" instead of "logger" or "self.logger"
+                logging.exception("Error occured while running http server")
                 logging.info('Can not run http bug reporter, skipping http, saving bugs in bugs.json')
             else:
-                logger.info(f'reporting bugs with http server and saving them as bugs.json')
+                logging.info(f'reporting bugs with http server and saving them as bugs.json')
         else:
-            logger.info(f'saving bugs in bugs.json')
+            logging.info(f'saving bugs in bugs.json')
 
     token = main_config.get('token')
     if not token:
-            logger.error("No Token, exiting")
+            logging.error("No Token, exiting")
             sys.exit()
 
-    bot_handler = BotHandler(logger, token, main_config.get('source','http://pcworms.blog.ir/rss'), env,
+    bot_handler = BotHandler(token, main_config.get('source','http://pcworms.blog.ir/rss'), env,
                              chats_db, data_db, strings, reporter)
     bot_handler.run()
     bot_handler.idle()
     if bug_reporter:
-        logger.info('saving bugs report')
+        logging.info('saving bugs report')
         bug_reporter.dump()
     if http_reporter:
-        logger.info('stoping http reporter')
+        logging.info('stoping http reporter')
         cherrypy.engine.stop()
     env.close()
     
