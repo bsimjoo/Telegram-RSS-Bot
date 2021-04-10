@@ -93,13 +93,13 @@ class BotHandler:
         data_db,
         strings: dict,
         bug_reporter = None):
-        #----[USE SOCKES]----
-        #import socks
-        #s = socks.socksocket()
-        #s.set_proxy(socks.SOCKS5, "localhost", 9090)
-        #self.updater = Updater(Token, request_kwargs = {'proxy_url': 'socks5h://127.0.0.1:9090/'})
+        #----[USE SOCKES]----   #TODO: Disable socks
+        import socks
+        s = socks.socksocket()
+        s.set_proxy(socks.SOCKS5, "localhost", 9090)
+        self.updater = Updater(Token, request_kwargs = {'proxy_url': 'socks5h://127.0.0.1:9090/'})
         #-----[NO PROXY]-----
-        self.updater = Updater(Token)
+        #self.updater = Updater(Token)
         #--------------------
         self.bot = self.updater.bot
         self.dispatcher = self.updater.dispatcher
@@ -263,6 +263,7 @@ class BotHandler:
                     self.interval = int(c.args[0])
                     self.__set_data__(
                         'interval', self.interval, self.data_db)
+                    #FIXME: exception on message edit
                     u.message.reply_text('✅ Interval changed to'+str(self.interval))
                     return
             u.message.reply_markdown_v2('❌ Bad command, use `/set_interval {new interval in secound}`')
@@ -1025,30 +1026,29 @@ class BotHandler:
 
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(
+    parser = argparse.ArgumentParser('main.py',
         description='Open source Telegram RSS-Bot server by bsimjoo\n'+\
             'https://github.com/bsimjoo/Telegram-RSS-Bot'
         )
     
-    parser.add_argument('r','reset',
+    parser.add_argument('-r','--reset',
     help='Reset stored datas about chats or bot data',
     default=False,required=False,choices=('data','chats','all'))
 
-    parser.add_argument('c','config',
+    parser.add_argument('-c','--config',
     help='Specify config file',
-    default='config.conf', required=False, type=argparse.FileType('r'))
+    default='user-config.conf', required=False, type=argparse.FileType('r'))
 
-    args = parser.parse_args(sys.argv)
-    
+    args = parser.parse_args(sys.argv[1:])
     config = ConfigParser(allow_no_value=False)
-    config.read(args.config)
+    with args.config as cf:
+        config.read_string(cf.read())
     main_config = config['main']
-    file_name = main_config.get('log-file',Ellipsis)
+    file_name = main_config.get('log-file')
     logging.basicConfig(
         format = '%(asctime)s - %(name)s - %(levelname)s - %(message)s',
         filename=file_name,
-        level = logging._nameToLevel[main_config.get('log-level','info')])
-
+        level = logging._nameToLevel.get(main_config.get('log-level','INFO').upper(),logging.INFO))
     env = lmdb.open(main_config.get('db-path','db.lmdb'), max_dbs = 3)
     chats_db = env.open_db(b'chats')
     data_db = env.open_db(b'config')        #using old name for compatibility
@@ -1067,25 +1067,30 @@ if __name__ == '__main__':
                     d=env.open_db()
                     txn.drop(d)
 
-    strings = main_config.get('strings-path','default-strings.json')
-    if os.path.exists(strings):
-        with open(strings, encoding = 'utf8') as fp:
-            strings = json.load(fp)
-    else:
-        logging.error('Strings file not found')
-        exit(1)
+    language = main_config.get('language','en-us')
+    strings_file = main_config.get('strings-file', 'Default-strings.json')
+    checks=[
+        (strings_file, language),
+        (strings_file, 'en-us'),
+        ('Default-strings.json', language),
+        ('Default-strings.json', 'en-us')
+    ]
+    strings = None
+    for file, language in checks:
+        if os.path.exists(file):
+            with open(file) as f:
+                strings = json.load(f)
+            if language in strings:
+                strings = strings[language]
+                logging.info(f'using "{language}" language from "{file}" file')
+                break
+            else:
+                logging.error(f'"{language}" language code not found in "{file}"')
+        else:
+            logging.error(f'file "{file}" not found')
 
-    #first try to get configured language, if not configured try to get "en-us"
-    # and then if language is not exists in strings so strings will be "None" then
-    # if strings is "None" (assuming that using a custom strings file) try to use
-    # default-strings.json and get "en-us" language and show a warning
-    strings=strings.get(main_config.get('language','en-us'), strings.get('en-us'))
-    if not strings and os.path.exists('default-strings.json'):
-        with open('default-strings.json', encoding = 'utf8') as fp:
-            strings = json.load(fp)['en-us']
-            logging.warning('Language or configuration not found, using default "en-us" language')
-    else:
-        logging.error('Unable to read strings file. Can not find specified language in your strings file and Default strings is missed. exiting...')
+    if not strings or strings == dict():
+        logging.error('Cannot use a strings file. exiting...')
         exit(1)
 
     bug_reporter = None
@@ -1179,7 +1184,7 @@ if __name__ == '__main__':
             logging.error("No Token, exiting")
             sys.exit()
 
-    bot_handler = BotHandler(token, main_config.get('source','http://pcworms.blog.ir/rss'), env,
+    bot_handler = BotHandler(token, main_config.get('source','https://pcworms.blog.ir/rss/'), env,
                              chats_db, data_db, strings, reporter)
     bot_handler.run()
     bot_handler.idle()
