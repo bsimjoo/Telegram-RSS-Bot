@@ -93,13 +93,13 @@ class BotHandler:
         data_db,
         strings: dict,
         bug_reporter = None):
-        #----[USE SOCKES]----   #
+        #----[USE SOCKES]----
         #import socks
         #s = socks.socksocket()
         #s.set_proxy(socks.SOCKS5, "localhost", 9090)
         #self.updater = Updater(Token, request_kwargs = {'proxy_url': 'socks5h://127.0.0.1:9090/'})
         #-----[NO PROXY]-----
-        #self.updater = Updater(Token)
+        self.updater = Updater(Token)
         #--------------------
         self.bot = self.updater.bot
         self.dispatcher = self.updater.dispatcher
@@ -1161,16 +1161,12 @@ if __name__ == '__main__':
                     def json(self):
                         return bug_reporter.reports
 
-                config = config.get('bug-reporter',None)
-                if config:
-                    cherrypy.log.access_log.propagate = False
-                    cherrypy.tree.mount(root(),'/')
-                    cherrypy.config.update({'global':config})
-                    cherrypy.engine.start()
-                    http_reporter = True    
-                
-                
-
+                conf = {'global':dict(config['bug-reporter'])}
+                cherrypy.log.access_log.propagate = False
+                cherrypy.tree.mount(root(),'/')
+                cherrypy.config.update(conf)
+                cherrypy.engine.start()
+                http_reporter = True
             except ModuleNotFoundError:
                 logging.error('Cherrypy module not found, please first make sure that it is installed and then use http-bug-reporter')
                 logging.info('Can not run http bug reporter, skipping http, saving bugs in bugs.json')
