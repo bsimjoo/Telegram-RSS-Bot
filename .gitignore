@@ -128,10 +128,9 @@ dmypy.json
 # Pyre type checker
 .pyre/
 
-.db/
+db/
+db.lmdb/
 *.mdb
 strings.json
 bugs.json
-*.pem
-*.cert
-custom-config.conf
+user-config.conf
