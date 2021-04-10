@@ -93,7 +93,8 @@ class BotHandler:
         data_db,
         strings: dict,
         bug_reporter = None):
-        #----[USE SOCKES]----   #TODO: Disable socks
+        #TODO: Disable socks
+        #----[USE SOCKES]----   #
         import socks
         s = socks.socksocket()
         s.set_proxy(socks.SOCKS5, "localhost", 9090)
@@ -217,7 +218,7 @@ class BotHandler:
                 res = 'total: '+str(txn.stat()["entries"])+'\n'
                 for key, value in txn.cursor():
                     chat = pickle.loads(value)
-                    if 'username' in chat:      #FIXME: fix exception here: "TypeError: argument of type 'int' is not iterable"
+                    if 'username' in chat:      #BUG: fix exception here: "TypeError: argument of type 'int' is not iterable"
                         chat['username'] = '@'+chat['username']
                     res += html.escape(json.dumps(chat,
                                        indent = 2, ensure_ascii = False))
@@ -263,7 +264,7 @@ class BotHandler:
                     self.interval = int(c.args[0])
                     self.__set_data__(
                         'interval', self.interval, self.data_db)
-                    #FIXME: exception on message edit
+                    #BUG: exception on message editing
                     u.message.reply_text('✅ Interval changed to'+str(self.interval))
                     return
             u.message.reply_markdown_v2('❌ Bad command, use `/set_interval {new interval in secound}`')
