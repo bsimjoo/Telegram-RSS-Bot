@@ -9,9 +9,11 @@ import random
 import re
 import os
 import traceback
+import html
+import argparse
+from configparser import ConfigParser
 from urllib.request import urlopen
 from bs4 import BeautifulSoup, Comment
-import html
 from telegram import *
 from telegram.error import BadRequest
 from telegram.utils.helpers import DEFAULT_NONE
@@ -21,17 +23,13 @@ from dateutil.parser import parse
 from datetime import datetime, timedelta
 from threading import Timer
 
-DB_PATH = './db'
-STRINGS_PATH = './strings.json'
-
-#All supported tags (Telegram + script image handler) seprated by '|'
-SUPPORTED_HTML_TAGS = '|'.join(('a','b','strong','i','em','code','pre','s','strike','del','u','img'))
-SUPPORTED_TAG_ATTRS = {'a':'href', 'img':'src', 'pre':'language'}
-
-STATE_ADD, STATE_EDIT, STATE_DELETE, STATE_CONFIRM = range(4)
-
-
 class BotHandler:
+
+    #All supported tags (Telegram + script image handler) seprated by '|'
+    SUPPORTED_HTML_TAGS = '|'.join(('a','b','strong','i','em','code','pre','s','strike','del','u','img'))
+    SUPPORTED_TAG_ATTRS = {'a':'href', 'img':'src', 'pre':'language'}
+
+    STATE_ADD, STATE_EDIT, STATE_DELETE, STATE_CONFIRM = range(4)
 
     # --------------------[Decorators]--------------------
 
@@ -86,7 +84,16 @@ class BotHandler:
     # ----------------------------------------------------
     # ----------------------[Init]------------------------
 
-    def __init__(self, logger: logging, Token, source, env, chats_db, config_db, strings: dict, bug_reporter = None):
+    def __init__(
+        self,
+        logger: logging,
+        Token,
+        source,
+        env,
+        chats_db,
+        data_db,
+        strings: dict,
+        bug_reporter = None):
         #----[USE SOCKES]----
         #import socks
         #s = socks.socksocket()
@@ -101,14 +108,14 @@ class BotHandler:
         self.logger = logger
         self.env = env
         self.chats_db = chats_db
-        self.config_db = config_db
-        self.adminID = self.__get_data__('adminID', [], DB = config_db)
-        self.ownerID = self.__get_data__('ownerID', DB = config_db)
+        self.data_db = data_db
+        self.adminID = self.__get_data__('adminID', [], DB = data_db)
+        self.ownerID = self.__get_data__('ownerID', DB = data_db)
         self.admins_pendding = {}
         self.admin_token = []
         self.strings = strings
         self.source = source
-        self.interval = self.__get_data__('interval', 5*60, config_db)
+        self.interval = self.__get_data__('interval', 5*60, data_db)
         self.__check__ = True
         self.reporter = bug_reporter if bug_reporter else None
 
@@ -132,11 +139,11 @@ class BotHandler:
                                 f'Hi my dear {user.full_name}\nFrom now on, I know you as my lord\nyour id is: "{user.id}"')
                             self.adminID.append(user.id)
                             self.__set_data__(
-                                'adminID', self.adminID, DB = config_db)
+                                'adminID', self.adminID, DB = data_db)
 
                             self.ownerID = user.id
                             self.__set_data__(
-                                'ownerID', self.ownerID, DB = config_db)
+                                'ownerID', self.ownerID, DB = data_db)
                     elif _.args[0] in self.admin_token:
                         if user.id in self.adminID:
                             message.reply_text(
@@ -212,7 +219,7 @@ class BotHandler:
                 res = 'total: '+str(txn.stat()["entries"])+'\n'
                 for key, value in txn.cursor():
                     chat = pickle.loads(value)
-                    if 'username' in chat:
+                    if 'username' in chat:      #FIXME: fix exception here: "TypeError: argument of type 'int' is not iterable"
                         chat['username'] = '@'+chat['username']
                     res += html.escape(json.dumps(chat,
                                        indent = 2, ensure_ascii = False))
@@ -245,7 +252,7 @@ class BotHandler:
                 reply_markup = add_keyboard(c))
             
             
-            return STATE_ADD
+            return self.STATE_ADD
 
         @self.adminCommand
         def send_feed_toall(u: Update, c: CallbackContext):
@@ -257,10 +264,10 @@ class BotHandler:
                 if c.args[0].isdigit():
                     self.interval = int(c.args[0])
                     self.__set_data__(
-                        'interval', self.interval, self.config_db)
-                    u.message.reply_text('✅ Interval changed to'+self.interval)
+                        'interval', self.interval, self.data_db)
+                    u.message.reply_text('✅ Interval changed to'+str(self.interval))
                     return
-            u.message.reply_text('❌ Bad command')
+            u.message.reply_markdown_v2('❌ Bad command, use `/set_interval {new interval in secound}`')
 
         # ----------------[User Commands]----------------
 
@@ -310,7 +317,7 @@ class BotHandler:
             c.user_data['last-message'].delete()
             c.user_data['last-message'] = u.message.reply_text('OK, I received your message now what? (send a message to add)', 
             reply_markup = add_keyboard(c))
-            return STATE_ADD
+            return self.STATE_ADD
 
         def add_photo(u:Update, c:CallbackContext):
             c.user_data['messages'].append(
@@ -325,7 +332,7 @@ class BotHandler:
             c.user_data['last-message'] = u.message.reply_text(
                 'OK, I received photo%s now what? (send a message to add)'%('s' if len(u.message.photo)>1 else ''),
                 reply_markup = add_keyboard(c))
-            return STATE_ADD
+            return self.STATE_ADD
 
         text_markup = InlineKeyboardMarkup([
             [
@@ -405,7 +412,7 @@ class BotHandler:
             else:
                 c.user_data['last-message'] = u.message.reply_text('OK, now what?  (send a message to add)',
                 reply_markup = add_keyboard(c))
-            return STATE_ADD
+            return self.STATE_ADD
 
         def edit(u: Update, c: CallbackContext):
             query = u.callback_query
@@ -417,11 +424,11 @@ class BotHandler:
                 reply_markup = ReplyKeyboardMarkup([['❌Cancel']],resize_keyboard = True))
             c.user_data['editing-prev-id'] = query.message.message_id
             c.user_data['edit-cap'] = edit_cap
-            return STATE_EDIT
+            return self.STATE_EDIT
 
         def text_edited(u: Update, c:CallbackContext):
             if not u.message:
-                return STATE_EDIT
+                return self.STATE_EDIT
             preview_msg_id = c.user_data['editing-prev-id']                             #id of the message that bot sent as preview
             msg = c.user_data['prev-dict'][preview_msg_id]                              #get msg by searcing preview message id in prev-dict
             edited_txt = u.message.text
@@ -493,7 +500,7 @@ class BotHandler:
             else:
                 c.user_data['last-message'] = u.message.reply_text('✅ Message edited; now you can add more messages or send it',
                 reply_markup = add_keyboard(c))
-            return STATE_ADD
+            return self.STATE_ADD
 
         def photo_edited(u: Update, c: CallbackContext):
             preview_msg_id = c.user_data['editing-prev-id']                             #id of the message that bot sent as preview
@@ -550,7 +557,7 @@ class BotHandler:
             else:
                 c.user_data['last-message'] = u.message.reply_text('✅ Message edited; now you can add more messages or send it',
                 reply_markup = add_keyboard(c))
-            return STATE_ADD
+            return self.STATE_ADD
 
         def delete(u: Update, c: CallbackContext):
             query = u.callback_query
@@ -563,7 +570,7 @@ class BotHandler:
             c.user_data['last-message'].delete()
             c.user_data['last-message'] = self.bot.send_message(
                 u.effective_chat.id, 'OK, now you can send message to add', reply_markup = add_keyboard(c))
-            return STATE_ADD
+            return self.STATE_ADD
 
         def deleting(u: Update, c: CallbackContext):
             query = u.callback_query
@@ -579,7 +586,7 @@ class BotHandler:
             c.user_data['last-message'].delete()
             c.user_data['last-message'] = self.bot.send_message(
                 u.effective_chat.id, '⏳ Deleting a message...', reply_markup = ReplyKeyboardRemove())
-            return STATE_DELETE
+            return self.STATE_DELETE
 
         def confirm(u: Update, c: CallbackContext):
             c.user_data['last-message'].delete()
@@ -595,7 +602,7 @@ class BotHandler:
                         ]
                     ]
                 ))
-            return STATE_CONFIRM
+            return self.STATE_CONFIRM
 
         def send(u: Update, c: CallbackContext):
             query = u.callback_query
@@ -606,7 +613,7 @@ class BotHandler:
                     parse_mode = ParseMode.MARKDOWN_V2,
                     reply_markup = add_keyboard(c)
                 )
-                return STATE_ADD
+                return self.STATE_ADD
             query.answer(
                 '✅ Done\nSending message to all users, goups and channels', show_alert = True)
             self.logger.info('Sending message to chats')
@@ -631,7 +638,7 @@ class BotHandler:
                             )
                             c.user_data['had-error'] = True
                             msg['had-error'] = True
-                            return STATE_ADD
+                            return self.STATE_ADD
                     elif msg['type'] == 'photo':
                         try:
                             chat.send_photo(
@@ -646,7 +653,7 @@ class BotHandler:
                             ).message_id
                             c.user_data['had-error'] = True
                             msg['had-error'] = True
-                            return STATE_ADD
+                            return self.STATE_ADD
 
             res = send_message(u.effective_chat.id)
             if res:
@@ -675,7 +682,7 @@ class BotHandler:
                     new_admin_id,
                     f'✅ Accepted, From now on, I know you as my admin')
                 self.adminID.append(new_admin_id)
-                self.__set_data__('adminID', self.adminID, DB = config_db)
+                self.__set_data__('adminID', self.adminID, DB = data_db)
                 self.admin_token.remove(self.admins_pendding[new_admin_id])
                 del(self.admins_pendding[new_admin_id])
                 query.answer('✅ Accepted')
@@ -704,7 +711,7 @@ class BotHandler:
 
         def cancel(state) -> typing.Callable:
             _cancel = None
-            if state in (STATE_ADD, STATE_CONFIRM):
+            if state in (self.STATE_ADD, self.STATE_CONFIRM):
                 def _cancel(u: Update, c: CallbackContext):
                     for key in ('messages', 'prev-dict', 'had-error', 'edit-cap', 'editing-prev-id'):
                         if key in c.user_data:
@@ -714,13 +721,13 @@ class BotHandler:
                     c.user_data['last-message'] = self.bot.send_message(u.effective_chat.id,
                         'Canceled', reply_markup = ReplyKeyboardRemove())
                     return ConversationHandler.END
-            elif state == STATE_EDIT:
+            elif state == self.STATE_EDIT:
                 def _cancel(u: Update, c: CallbackContext):
                     for key in ('edit-cap', 'editing-prev-id'):
                         if key in c.user_data:
                             del(c.user_data[key])
-                    return STATE_ADD
-            elif state == STATE_DELETE:
+                    return self.STATE_ADD
+            elif state == self.STATE_DELETE:
                 def _cancel(u: Update, c: CallbackContext):
                     query = u.callback_query
                     query.answer('❌ Canceled')
@@ -734,35 +741,35 @@ class BotHandler:
                         u.effective_chat.id, 
                         'OK, now what?  (send a message to add)',
                         reply_markup = add_keyboard(c))
-                    return STATE_ADD
+                    return self.STATE_ADD
             return _cancel
 
         send_all_conv_handler = ConversationHandler(
             entry_points = [CommandHandler('sendall', sendall)],
             states = {
-                STATE_ADD: [
+                self.STATE_ADD: [
                     MessageHandler(Filters.regex("^✅Send$"), confirm),
                     MessageHandler(Filters.regex("^👁Preview$"), preview),
                     MessageHandler(Filters.regex(
-                        "^❌Cancel$"), cancel(STATE_ADD)),
+                        "^❌Cancel$"), cancel(self.STATE_ADD)),
                     MessageHandler(Filters.regex("^✅ Markdown Enabled$")|Filters.regex("^◻️ Markdown Disabled$"), toggle_markdown),
                     MessageHandler(Filters.text, add_text),
                     MessageHandler(Filters.photo, add_photo)
                 ],
-                STATE_EDIT: [
+                self.STATE_EDIT: [
                     MessageHandler(Filters.regex(
-                        "^❌Cancel$"), cancel(STATE_EDIT)),
+                        "^❌Cancel$"), cancel(self.STATE_EDIT)),
                     MessageHandler(Filters.regex("^✅ Markdown Enabled$")|Filters.regex("^◻️ Markdown Disabled$"), toggle_markdown),
                     MessageHandler(Filters.text, text_edited),
                     MessageHandler(Filters.photo, photo_edited)
                 ],
-                STATE_DELETE: [
-                    CallbackQueryHandler(cancel(STATE_DELETE), pattern = '^no$'),
+                self.STATE_DELETE: [
+                    CallbackQueryHandler(cancel(self.STATE_DELETE), pattern = '^no$'),
                     CallbackQueryHandler(delete, pattern = '^yes$'),
                 ],
-                STATE_CONFIRM: [
+                self.STATE_CONFIRM: [
                     CallbackQueryHandler(send, pattern = '^yes$'),
-                    CallbackQueryHandler(cancel(STATE_CONFIRM), pattern = '^no$')
+                    CallbackQueryHandler(cancel(self.STATE_CONFIRM), pattern = '^no$')
                 ]
             },
             fallbacks = [
@@ -844,7 +851,7 @@ class BotHandler:
             filename = f.filename
             exception_type = type(context.error).__name__
             if self.reporter:
-                self.reporter.bug(f'{filename}@L{lineno}: {exception_type}',tb_string, {'line':lineno, 'file':filename})
+                self.reporter.bug(f'L{lineno}@{filename}: {exception_type}',tb_string, {'line':lineno, 'file':filename})
 
             # Build the message with some markup and additional information about what happened.
             # You might need to add some logic to deal with messages longer than the 4096 character limit.
@@ -873,7 +880,7 @@ class BotHandler:
         if feeds_xml:
             soup_page = BeautifulSoup(feeds_xml, 'xml')
             feeds_list = soup_page.findAll("item")
-            purge = re.compile(r'</?(?!(?:%s)\b)\w+[^>]*/?>'%SUPPORTED_HTML_TAGS).sub      #This regex will purge any unsupported tag
+            purge = re.compile(r'</?(?!(?:%s)\b)\w+[^>]*/?>'%self.SUPPORTED_HTML_TAGS).sub      #This regex will purge any unsupported tag
             skip = re.compile(r'</?[^>]*name = "skip"[^>]*>').match               #This regex will search for a tag named as "skip" like: <any name = "skip">
             for feed in feeds_list:
                 description = str(feed.description.text)
@@ -881,8 +888,8 @@ class BotHandler:
                     soup = BeautifulSoup(purge('', description), 'html.parser')
                     for tag in soup.descendants:
                         #Remove any unsupported attribute
-                        if tag.name in SUPPORTED_TAG_ATTRS:
-                            attr = SUPPORTED_TAG_ATTRS[tag.name]
+                        if tag.name in self.SUPPORTED_TAG_ATTRS:
+                            attr = self.SUPPORTED_TAG_ATTRS[tag.name]
                             if attr in tag.attrs:
                                 tag.attrs = {attr: tag[attr]}
                         else:
@@ -968,17 +975,17 @@ class BotHandler:
     def check_new_feed(self):
         feed, messages = self.read_feed()
         if feed:
-            date = self.__get_data__('last-feed-date', DB = self.config_db)
+            date = self.__get_data__('last-feed-date', DB = self.data_db)
             if date:
                 feed_date = parse(feed.pubDate.text)
                 if feed_date > date:
                     self.__set_data__('last-feed-date',
-                                      feed_date, DB = self.config_db)
+                                      feed_date, DB = self.data_db)
                     self.send_feed(feed, messages, self.get_string('new-feed'), self.iter_all_chats())
             else:
                 feed_date = parse(feed.pubDate.text)
                 self.__set_data__('last-feed-date',
-                                  feed_date, DB = self.config_db)
+                                  feed_date, DB = self.data_db)
                 self.send_feed(feed, messages, self.get_string('new-feed'), self.iter_all_chats())
         if self.__check__:
             self.check_thread = Timer(self.interval, self.check_new_feed)
@@ -1020,178 +1027,163 @@ class BotHandler:
 
 
 if __name__ == '__main__':
-    argv = sys.argv
-    if '-h' in argv:
-        print('Open-source Telegram-RSS-Bot by BSimjoo\n'+\
-            'https://github.com/bsimjoo/Telegram-RSS-Bot\n\n'+
-            'Usage:\n'+
-            '-t <token>\tspecify bot token for first use.\n'+\
-            '-s <feeds url>\tdetermine feeds source url. (for first time)\n'+\
-            '--br\tuse offline bug reporter. save all found error in bugs.json\n'+\
-            '--hbr <optional:config>\t use a http server to report bugs. if config file'+\
-            ' didn\'t specified, program will use "bug-reporter.conf" or "custom-config.conf" as config file\n\n'+\
-            'Caution: If you want to use http-bug-reporter pelase first make sure that cherrypy is installed or install it with:\n'+\
-            'python3 pip install cherrypy'
-            )
+    parser = argparse.ArgumentParser(
+        description='Open source Telegram RSS-Bot server by bsimjoo\n'+\
+            'https://github.com/bsimjoo/Telegram-RSS-Bot'
+        )
+    
+    parser.add_argument('r','reset',
+    help='Reset stored datas about chats or bot data',
+    default=False,required=False,choices=('data','chats','all'))
+
+    parser.add_argument('c','config',
+    help='Specify config file',
+    default='config.conf', required=False, type=argparse.FileType('r'))
+
+    args = parser.parse_args(sys.argv)
+    
+    config = ConfigParser(allow_no_value=False)
+    config.read(args.config)
+    main_config = config['main']
+    file_name = main_config.get('log-file',Ellipsis)
     logging.basicConfig(
-        format = '%(asctime)s - %(name)s - %(levelname)s - %(message)s', level = logging.INFO)
+        format = '%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+        filename=file_name,
+        level = logging._nameToLevel[main_config.get('log-level','info')])
     logger = logging.getLogger()
-    env = lmdb.open(DB_PATH, max_dbs = 3)
 
-    if '-r' in argv and len(argv) > 2:
-        db_to_drop = argv[argv.index('-r')+1]
-        if db_to_drop in ('config', 'chats', 'all'):
-            answer = input(f'Are you sure you want to Remove "{db_to_drop}" databases?(yes/any)')
-            if answer != 'yes':
-                exit()
-            elif db_to_drop != 'all':
-                db = env.open_db(db_to_drop.encode())
-                with env.begin(db, write = True) as txn:
-                    d = env.open_db()
-                    txn.drop(d)
-            else:
-                for db_to_drop in ('config', 'chats'):
-                    db = env.open_db(db_to_drop.encode())
-                    with env.begin(db, write = True) as txn:
-                        d = env.open_db()
-                        txn.drop(d)
-            exit()
-
-    config_db = env.open_db(b'config')
+    env = lmdb.open(main_config.get('db-path','db.lmdb'), max_dbs = 3)
     chats_db = env.open_db(b'chats')
-    token = ''
-    source = ''
-    language = 'en-us'
-    strings = None
-    if not os.path.exists(STRINGS_PATH):
-        STRINGS_PATH = 'default-strings.json'
-    with open(STRINGS_PATH, encoding = 'utf8') as fp:
-        strings = json.load(fp)
+    data_db = env.open_db(b'config')        #using old name for compatibility
+
+    if args.reset:
+        answer = input(f'Are you sure you want to Reset all "{args.reset}"?(yes | anything else means no)')
+        if answer != 'yes':
+            exit()
+        else:
+            if args.reset in ('data', 'all'):
+                with env.begin(data_db, write=True) as txn:
+                    d=env.open_db()
+                    txn.drop(d)
+            if args.reset in ('chats', 'all'):
+                with env.begin(chats_db, write=True) as txn:
+                    d=env.open_db()
+                    txn.drop(d)
+
+    strings = main_config.get('strings-path','default-strings.json')
+    if os.path.exists(strings):
+        with open(strings, encoding = 'utf8') as fp:
+            strings = json.load(fp)
+    else:
+        logger.error('Strings file not found')
+        exit(1)
+
+    #first try to get configured language, if not configured try to get "en-us"
+    # and then if language is not exists in strings so strings will be "None" then
+    # if strings is "None" (assuming that using a custom strings file) try to use
+    # default-strings.json and get "en-us" language and show a warning
+    strings=strings.get(main_config.get('language','en-us'), strings.get('en-us'))
+    if not strings and os.path.exists('default-strings.json'):
+        with open('default-strings.json', encoding = 'utf8') as fp:
+            strings = json.load(fp)['en-us']
+            logger.warning('Language or configuration not found, using default "en-us" language')
+    else:
+        logger.error('Unable to read strings file. Can not find specified language in your strings file and Default strings is missed. exiting...')
+        exit(1)
 
     bug_reporter = None
     reporter = None
     http_reporter = False
 
-    if '--br' in argv or '--hbr' in argv:
+    if main_config.get('bug-reporter', 'off') in ('online', 'offline'):
         import BugReporter
         bug_reporter = BugReporter.BugReporter()
         reporter = bug_reporter('Telegram_RSS_Bot')
         
-        if '--hbr' in argv:
-            config = "custom-config.conf"
-            if len(argv)>2:
-                next_arg = argv[argv.index('--hbr')+1]
-                if not next_arg.startswith('-'):
-                    config = next_arg
-            
-            if not os.path.exists(config):
-                config = "Bug-reporter.conf"
-            
+        if main_config.get('bug-reporter') == 'online':
             try:
                 import cherrypy #user can ignore installing this mudole just if doesn't need reporting on http
+            
+                class root:
+
+                    @cherrypy.expose
+                    def index(self):
+                        res = '''<html>
+                        <head>
+                        <style>
+                            html, body{
+                                background-color: #17202a;
+                                color:  #d6eaf8;
+                            }
+                            pre, ssh-pre{
+                                width:80%;
+                                max-height: 30%;
+                                margin: auto;
+                                background-color: #f39c12;
+                                color:  #641e16;
+                                border-radius: 10px;
+                                padding: 10px;
+                                overflow-x: auto;
+                                white-space: pre-wrap;
+                                word-wrap: break-word;
+                            }
+                        </style>
+                        </head>
+                        <body><h1>Bugs</h1><hr>
+                        <p><b>What is this page?</b> This project uses a simple web
+                        server to report bugs (exceptions) in a running application.
+                        <p><b>What are groups?</b> Because of this project can be forked
+                        so each fork can have its own bugs. Although it is sometimes
+                        difficult to distinguish between original project bugs and forged
+                        projects, groups are a simple way to separate these bugs.<p>'''
+
+                        for group, reporter in bug_reporter.reports.items():
+                            res+=f'<h2>Group: {group}</h2><hr>'
+                            for tag, content in reporter['tags'].items():
+                                lineno = content['custom-prop']['line']
+                                filename = content['custom-prop']['file']
+                                link = ''
+                                if os.path.exists(filename):
+                                    link = f' <a href="https://github.com/bsimjoo/Telegram-RSS-Bot/blob/main/{filename}#L{lineno}"> 🔸{filename} L{lineno}</a></h3>'
+                                res+=f'<h3>&bull;Tag <kbd>"{tag}"</kbd> Count: {content["count"]}{link}</h3>'
+                                res+=f'<pre>{content["message"]}</pre>'
+
+                        res+='<h3 align="center"><a href="/json">Raw JSON</a></h3></body></html>'
+                        return res
+
+                    @cherrypy.expose
+                    @cherrypy.tools.json_out()
+                    def json(self):
+                        return bug_reporter.reports
+
+                config = config.get('bug-reporter',None)
+                if config:
+                    cherrypy.log.access_log.propagate = False
+                    cherrypy.tree.mount(root(),'/')
+                    cherrypy.config.update({'global':config})
+                    cherrypy.engine.start()
+                    http_reporter = True    
+                
+                
+
             except ModuleNotFoundError:
-                logger.error('Cherrypy not found, please first make sure that it is installed and then use http-bug-reporter')
-                exit()
-
-            class root:
-                def __init__(self, reporter, bug_reporter):
-                    self.reporter = reporter
-                    self.bug_reporter = bug_reporter
-
-                @cherrypy.expose
-                def index(self):
-                    res = '''<html>
-                    <head>
-                    <style>
-                        html, body{
-                            background-color: #17202a;
-                            color:  #d6eaf8;
-                        }
-                        pre, ssh-pre{
-                            width:80%;
-                            max-height: 30%;
-                            margin: auto;
-                            background-color: #f39c12;
-                            color:  #641e16;
-                            border-radius: 10px;
-                            padding: 10px;
-                            overflow-x: auto;
-                            white-space: pre-wrap;
-                            word-wrap: break-word;
-                        }
-                    </style>
-                    </head>
-                    <body><h1>Bugs</h1><hr>
-                    <p><b>What is this page?</b> This project uses a simple web
-                     server to report bugs (exceptions) in a running application.
-                    <p><b>What are groups?</b> Because of this project can be forked
-                     so each fork can have its own bugs. Although it is sometimes
-                     difficult to distinguish between original project bugs and forged
-                     projects, groups are a simple way to separate these bugs.<p>'''
-                    for group,reporter in bug_reporter.reports.items():
-                        res+=f'<h2>Group: {group}</h2><hr>'
-                        for tag, content in reporter['tags'].items():
-                            lineno = content['custom-prop']['line']
-                            filename = content['custom-prop']['file']
-                            link = ''
-                            if os.path.exists(filename):
-                                link = f' <a href="https://github.com/bsimjoo/Telegram-RSS-Bot/blob/main/{filename}#L{lineno}"> 🔸{filename} L{lineno}</a></h3>'
-                            res+=f'<h3>&bull;Tag <kbd>"{tag}"</kbd> Count: {content["count"]}{link}</h3>'
-                            res+=f'<pre>{content["message"]}</pre>'
-
-                    res+='<h3 align="center"><a href="/json">Raw JSON</a></h3></body></html>'
-                    return res
-
-                @cherrypy.expose
-                @cherrypy.tools.json_out()
-                def json(self):
-                    return self.bug_reporter.reports
-
-            
-            cherrypy.log.access_log.propagate = False
-            cherrypy.tree.mount(root(reporter, bug_reporter),'/')
-            cherrypy.config.update(config)
-            cherrypy.engine.start()
-            http_reporter = True
-            
-            logger.info(f'reporting bugs with http server and saving them as bugs.json')
+                logger.error('Cherrypy module not found, please first make sure that it is installed and then use http-bug-reporter')
+                logging.info('Can not run http bug reporter, skipping http, saving bugs in bugs.json')
+            except Exception as Argument:
+                logging.exception("Error occured while running http server")     #TODO: use "logging" instead of "logger" or "self.logger"
+                logging.info('Can not run http bug reporter, skipping http, saving bugs in bugs.json')
+            else:
+                logger.info(f'reporting bugs with http server and saving them as bugs.json')
         else:
             logger.info(f'saving bugs in bugs.json')
 
-    with env.begin(config_db, write = True) as txn:
-        if '-t' in argv and len(argv) > 2:
-            token = argv[argv.index('-t')+1]
-            txn.put(b'token', token.encode())
-        else:
-            token = txn.get(b'token', b'').decode()
-        
-        if '-l' in argv and len(argv) > 2:
-            language = argv[argv.index('-l')+1].lower()
-            txn.put(b'language', token.encode())
-        else:
-            language = txn.get(b'language', b'').decode()
-
-        if '-s' in argv and len(argv) > 2:
-            source = argv[argv.index('-s')+1]
-            txn.put(b'source', source.encode())
-        else:
-            source = txn.get(
-                b'source', b'https://pcworms.blog.ir/rss/').decode()
-                
-
-    if token == '':
+    token = main_config.get('token')
+    if not token:
             logger.error("No Token, exiting")
             sys.exit()
 
-    if language in strings:
-        strings = strings[language]
-    else:
-        logger.warning('Specified language is not supported, using "en-us" language.')
-        logger.info('You can find all strings in "strings.json" file for available languages or translating')
-        strings = strings['en-us']
-
-    bot_handler = BotHandler(logger, token, source, env,
-                             chats_db, config_db, strings, reporter)
+    bot_handler = BotHandler(logger, token, main_config.get('source','http://pcworms.blog.ir/rss'), env,
+                             chats_db, data_db, strings, reporter)
     bot_handler.run()
     bot_handler.idle()
     if bug_reporter:

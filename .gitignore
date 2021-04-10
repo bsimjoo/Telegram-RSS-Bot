@@ -134,4 +134,3 @@ strings.json
 bugs.json
 *.pem
 *.cert
-custom-config.conf
