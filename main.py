@@ -310,10 +310,13 @@ class BotHandler:
                 u.message.reply_text('✅ Markdown Enabled', reply_markup=add_keyboard(c))
 
         def add_text(u:Update, c:CallbackContext):
+            text = u.message.text
+            if c.user_data['parser'] == ParseMode.MARKDOWN_V2:
+                text = u.message.text_markdown_v2
             c.user_data['messages'].append(
                 {
                     'type':'text',
-                    'text': u.effective_message.text,
+                    'text': text,
                     'parser': c.user_data['parser']
                 }
             )
@@ -323,11 +326,14 @@ class BotHandler:
             return self.STATE_ADD
 
         def add_photo(u:Update, c:CallbackContext):
+            text = u.message.caption
+            if c.user_data['parser'] == ParseMode.MARKDOWN_V2:
+                text = u.message.caption_markdown_v2
             c.user_data['messages'].append(
                 {
                     'type': 'photo',
                     'photo': u.message.photo[-1],
-                    'caption': u.message.caption,
+                    'caption': text,
                     'parser': c.user_data['parser']
                 }
             )
@@ -433,8 +439,10 @@ class BotHandler:
             if not u.message:
                 return self.STATE_EDIT
             preview_msg_id = c.user_data['editing-prev-id']                             #id of the message that bot sent as preview
-            msg = c.user_data['prev-dict'][preview_msg_id]                              #get msg by searcing preview message id in prev-dict
+            msg = c.user_data['prev-dict'][preview_msg_id]                              #get msg by searching preview message id in prev-dict
             edited_txt = u.message.text
+            if c.user_data['parser'] == ParseMode.MARKDOWN_V2:
+                edited_txt = u.message.text_markdown_v2
             if msg.get('had-error'):
                 del(msg['had-error'])
             if c.user_data.get('had-error'):
@@ -507,15 +515,18 @@ class BotHandler:
 
         def photo_edited(u: Update, c: CallbackContext):
             preview_msg_id = c.user_data['editing-prev-id']                             #id of the message that bot sent as preview
-            msg = c.user_data['prev-dict'][preview_msg_id]                              #get msg by searcing preview message id in prev-dict
+            msg = c.user_data['prev-dict'][preview_msg_id]                              #get msg by searching preview message id in prev-dict
             if msg.get('had-error'):
                 del(msg['had-error'])
             if c.user_data.get('had-error'):
                 del(c.user_data['had-error'])
             msg['parser'] = c.user_data['parser']
+            msg['photo'] = u.message.photo[-1]
+            msg['caption'] = u.message.caption
+            if c.user_data['parser'] == ParseMode.MARKDOWN_V2:
+                msg['caption'] = u.message.caption_markdown_v2
+                
             if msg['type'] == 'photo':
-                msg['photo'] = u.message.photo[-1]
-                msg['caption'] = u.message.caption
                 try:
                     c.bot.edit_message_media(
                         u.effective_chat.id,
@@ -539,8 +550,6 @@ class BotHandler:
                 #change message type to photo
                 msg['type'] = 'photo'
                 del(msg['text'])
-                msg['photo'] = u.message.photo[-1]
-                msg['caption'] = u.message.caption
                 c.bot.edit_message_text(
                     '⚠️ This message type had been changed from text to photo. '+\
                     'You can request for a new preview to see this message.',
@@ -596,7 +605,7 @@ class BotHandler:
             c.user_data['last-message'] = self.bot.send_message(u.effective_chat.id,
                 'Are you sure, you want to send message' +
                 ('s' if len(c.user_data['messages']) > 1 else '') +
-                'to all users, goups and channels?',
+                'to all users, groups and channels?',
                 reply_markup = InlineKeyboardMarkup(
                     [
                         [
@@ -618,11 +627,11 @@ class BotHandler:
                 )
                 return self.STATE_ADD
             query.answer(
-                '✅ Done\nSending message to all users, goups and channels', show_alert = True)
+                '✅ Done\nSending message to all users, groups and channels', show_alert = True)
             logging.info('Sending message to chats')
             c.user_data['last-message'].delete()
             c.user_data['last-message'] = self.bot.send_message(u.effective_chat.id,
-            '✅ Done\nSending message to all users, goups and channels')
+            '✅ Done\nSending message to all users, groups and channels')
 
             def send_message(chat_id):
                 chat = c.bot.get_chat(chat_id)
@@ -1036,7 +1045,7 @@ if __name__ == '__main__':
         )
     
     parser.add_argument('-r','--reset',
-    help='Reset stored datas about chats or bot data',
+    help='Reset stored data about chats or bot data',
     default=False,required=False,choices=('data','chats','all'))
 
     parser.add_argument('-c','--config',
@@ -1173,7 +1182,7 @@ if __name__ == '__main__':
                 logging.error('Cherrypy module not found, please first make sure that it is installed and then use http-bug-reporter')
                 logging.info('Can not run http bug reporter, skipping http, saving bugs in bugs.json')
             except Exception as Argument:
-                logging.exception("Error occured while running http server")
+                logging.exception("Error occurred while running http server")
                 logging.info('Can not run http bug reporter, skipping http, saving bugs in bugs.json')
             else:
                 logging.info(f'reporting bugs with http server and saving them as bugs.json')
