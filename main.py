@@ -217,8 +217,9 @@ class BotHandler:
                 res = 'total: '+str(txn.stat()["entries"])+'\n'
                 for key, value in txn.cursor():
                     chat = pickle.loads(value)
-                    #TODO: fix exception here: "TypeError: argument of type 'int' is not iterable"
-                    # labels: bug
+                    if type(chat) is not type(dict()):
+                        res+=html.escape(f'\n bad data type; type:{type(chat)}, value:{chat}\n')
+                        continue
                     if 'username' in chat:
                         chat['username'] = '@'+chat['username']
                     res += html.escape(json.dumps(chat,
