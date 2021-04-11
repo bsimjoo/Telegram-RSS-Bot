@@ -1160,13 +1160,14 @@ if __name__ == '__main__':
                     @cherrypy.tools.json_out()
                     def json(self):
                         return bug_reporter.reports
-
-                conf = {'global':dict(config['bug-reporter'])}
-                cherrypy.log.access_log.propagate = False
-                cherrypy.tree.mount(root(),'/')
-                cherrypy.config.update(conf)
-                cherrypy.engine.start()
-                http_reporter = True
+                
+                conf = main_config.get('reporter-config-file','Bug-reporter.conf')
+                if os.path.exists(conf):
+                    cherrypy.log.access_log.propagate = False
+                    cherrypy.tree.mount(root(),'/')
+                    cherrypy.config.update(conf)
+                    cherrypy.engine.start()
+                    http_reporter = True
             except ModuleNotFoundError:
                 logging.error('Cherrypy module not found, please first make sure that it is installed and then use http-bug-reporter')
                 logging.info('Can not run http bug reporter, skipping http, saving bugs in bugs.json')
