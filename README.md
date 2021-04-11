@@ -91,7 +91,7 @@ Then configure server. this repository may update `config-example.conf`, but `us
 ```
 cp config-example.conf user-config.conf
 ```
-Edit `user-config.conf` with a text editor, if you want to know about Bug-Reporter [see Bug reporter below](#bug-reporter-)
+Edit `user-config.conf` with a text editor, if you want to know about Bug-Reporter [see Bug reporter below](#bug-reporter--)
 
 Identify yourself as owner to bot. you can start a chat with your bot and then use this:
 ```
