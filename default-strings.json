@@ -1,13 +1,13 @@
 {
     "en-us":{
-        "wellcome": [
+        "welcome": [
             "Hi, I'm open\\-source [telegram RSS bot](https://github.com/bsimjoo/Telegram_RSS_bot) ",
-            "wroten by [BSimjoo](https://github.com/bsimjoo) and this is a default message\\.\n",
+            "wrote by [BSimjoo](https://github.com/bsimjoo) and this is a default message\\.\n",
             "*Owner can edit this message in strings\\.json file*"
         ],
         "group-intro": [
             "Hi everybody, I'm open\\-source [telegram RSS bot](https://github.com/bsimjoo/Telegram_RSS_bot) ",
-            "wroten by [BSimjoo](https://github.com/bsimjoo) and this is a default message\\.\n",
+            "wrote by [BSimjoo](https://github.com/bsimjoo) and this is a default message\\.\n",
             "*Owner can edit this message in strings\\.json file*"
         ],
         "new-feed": "🆕♨️New post on weblog:",
@@ -28,12 +28,12 @@
             "/last_feed Get last post of weblog\n\n",
             "/help      Show this help"
         ],
-        "time-limit-error": "Sorry, I can not answer you right now because of time limition between two request, try again 2 mins later.",
+        "time-limit-error": "Sorry, I can not answer you right now because of time limitation between two request, try again 2 mins later.",
         "unknown": "Unknown command",
         "unknown-msg": "Sorry, I can't chat with anyone right now!"
     },
     "fa-ir": {
-        "wellcome": [
+        "welcome": [
             "سلام، من ربات متن باز ",
             "(Telegram RSS Bot)[https://github.com/bsimjoo/Telegram_RSS_bot] ",
             "هستم و توسط ",

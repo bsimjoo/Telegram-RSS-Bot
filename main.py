@@ -9,9 +9,11 @@ import random
 import re
 import os
 import traceback
+import html
+import argparse
+from configparser import ConfigParser
 from urllib.request import urlopen
 from bs4 import BeautifulSoup, Comment
-import html
 from telegram import *
 from telegram.error import BadRequest
 from telegram.utils.helpers import DEFAULT_NONE
@@ -21,17 +23,14 @@ from dateutil.parser import parse
 from datetime import datetime, timedelta
 from threading import Timer
 
-DB_PATH = './db'
-STRINGS_PATH = './strings.json'
-
-#All supported tags (Telegram + script image handler) seprated by '|'
-SUPPORTED_HTML_TAGS = '|'.join(('a','b','strong','i','em','code','pre','s','strike','del','u','img'))
-SUPPORTED_TAG_ATTRS = {'a':'href', 'img':'src', 'pre':'language'}
-
-STATE_ADD, STATE_EDIT, STATE_DELETE, STATE_CONFIRM = range(4)
-
-
 class BotHandler:
+
+    #All supported tags by telegram seprated by '|'
+    # this program will handle images it self
+    SUPPORTED_HTML_TAGS = '|'.join(('a','b','strong','i','em','code','pre','s','strike','del','u'))
+    SUPPORTED_TAG_ATTRS = {'a':'href', 'img':'src', 'pre':'language'}
+
+    STATE_ADD, STATE_EDIT, STATE_DELETE, STATE_CONFIRM = range(4)
 
     # --------------------[Decorators]--------------------
 
@@ -86,7 +85,15 @@ class BotHandler:
     # ----------------------------------------------------
     # ----------------------[Init]------------------------
 
-    def __init__(self, logger: logging, Token, source, env, chats_db, config_db, strings: dict, bug_reporter = None):
+    def __init__(
+        self,
+        Token,
+        source,
+        env,
+        chats_db,
+        data_db,
+        strings: dict,
+        bug_reporter = None):
         #----[USE SOCKES]----
         #import socks
         #s = socks.socksocket()
@@ -98,17 +105,16 @@ class BotHandler:
         self.bot = self.updater.bot
         self.dispatcher = self.updater.dispatcher
         self.token = Token
-        self.logger = logger
         self.env = env
         self.chats_db = chats_db
-        self.config_db = config_db
-        self.adminID = self.__get_data__('adminID', [], DB = config_db)
-        self.ownerID = self.__get_data__('ownerID', DB = config_db)
+        self.data_db = data_db
+        self.adminID = self.__get_data__('adminID', [], DB = data_db)
+        self.ownerID = self.__get_data__('ownerID', DB = data_db)
         self.admins_pendding = {}
         self.admin_token = []
         self.strings = strings
         self.source = source
-        self.interval = self.__get_data__('interval', 5*60, config_db)
+        self.interval = self.__get_data__('interval', 5*60, data_db)
         self.__check__ = True
         self.reporter = bug_reporter if bug_reporter else None
 
@@ -121,7 +127,7 @@ class BotHandler:
             data['members-count'] = chat.get_members_count()-1
             if chat.type == Chat.PRIVATE:
                 data.update(user.to_dict())
-                message.reply_markdown_v2(self.get_string('wellcome'))
+                message.reply_markdown_v2(self.get_string('welcome'))
                 if len(_.args) == 1:
                     if _.args[0] == self.token:
                         if user.id in self.adminID:
@@ -132,11 +138,11 @@ class BotHandler:
                                 f'Hi my dear {user.full_name}\nFrom now on, I know you as my lord\nyour id is: "{user.id}"')
                             self.adminID.append(user.id)
                             self.__set_data__(
-                                'adminID', self.adminID, DB = config_db)
+                                'adminID', self.adminID, DB = data_db)
 
                             self.ownerID = user.id
                             self.__set_data__(
-                                'ownerID', self.ownerID, DB = config_db)
+                                'ownerID', self.ownerID, DB = data_db)
                     elif _.args[0] in self.admin_token:
                         if user.id in self.adminID:
                             message.reply_text(
@@ -186,7 +192,7 @@ class BotHandler:
         def my_level(u: Update, c: CallbackContext):
             if u.effective_user.id == self.ownerID:
                 u.message.reply_text(
-                    'Oh, my lord. I respect you. new version2!')
+                    'Oh, my lord. I respect you.')
             elif u.effective_user.id in self.adminID:
                 u.message.reply_text('Oh, my admin. Hi, How are you?')
 
@@ -212,6 +218,9 @@ class BotHandler:
                 res = 'total: '+str(txn.stat()["entries"])+'\n'
                 for key, value in txn.cursor():
                     chat = pickle.loads(value)
+                    if type(chat) is not type(dict()):
+                        res+=html.escape(f'\n bad data type; type:{type(chat)}, value:{chat}\n')
+                        continue
                     if 'username' in chat:
                         chat['username'] = '@'+chat['username']
                     res += html.escape(json.dumps(chat,
@@ -222,10 +231,10 @@ class BotHandler:
             keys = ['❌Cancel']
             if len(c.user_data['messages']):
                 keys = ['✅Send', '👁Preview', '❌Cancel']
-            markdown = c.user_data['parser'] == ParseMode.MARKDOWN_V2
+            markdown = c.user_data['parser'] == ParseMode.HTML
             return ReplyKeyboardMarkup(
                 [
-                    [('✅ Markdown Enabled' if markdown else '◻️ Markdown Disabled')],
+                    [('✅ HTML Enabled' if markdown else '◻️ HTML Disabled')],
                     keys
                 ],
                 resize_keyboard=True
@@ -244,8 +253,7 @@ class BotHandler:
                 'OK, Send a message to forward it to all users',
                 reply_markup = add_keyboard(c))
             
-            
-            return STATE_ADD
+            return self.STATE_ADD
 
         @self.adminCommand
         def send_feed_toall(u: Update, c: CallbackContext):
@@ -257,10 +265,12 @@ class BotHandler:
                 if c.args[0].isdigit():
                     self.interval = int(c.args[0])
                     self.__set_data__(
-                        'interval', self.interval, self.config_db)
-                    u.message.reply_text('✅ Interval changed to'+self.interval)
+                        'interval', self.interval, self.data_db)
+                    #TODO: exception on message editing
+                    # labels: bug
+                    u.message.reply_text('✅ Interval changed to'+str(self.interval))
                     return
-            u.message.reply_text('❌ Bad command')
+            u.message.reply_markdown_v2('❌ Bad command, use `/set_interval {new interval in seconds}`')
 
         # ----------------[User Commands]----------------
 
@@ -283,7 +293,7 @@ class BotHandler:
 
         @self.command
         def stop(u: Update, c: CallbackContext):
-            logger.info(
+            logging.info(
                 f'I had been removed from a chat. chat-id:{u.effective_chat.id}')
             with self.env.begin(self.chats_db, write = True) as txn:
                 if txn.get(str(u.effective_chat.id).encode()):  # check exist
@@ -292,32 +302,38 @@ class BotHandler:
         # ----------[Conversation handlers]-------------
 
         def toggle_markdown(u: Update, c:CallbackContext):
-            if c.user_data['parser'] == ParseMode.MARKDOWN_V2:
+            if c.user_data['parser'] == ParseMode.HTML:
                 c.user_data['parser'] = DEFAULT_NONE
-                u.message.reply_text('◻️ Markdown Disabled', reply_markup=add_keyboard(c))
+                u.message.reply_text('◻️ HTML Disabled', reply_markup=add_keyboard(c))
             else:
-                c.user_data['parser'] = ParseMode.MARKDOWN_V2
-                u.message.reply_text('✅ Markdown Enabled', reply_markup=add_keyboard(c))
+                c.user_data['parser'] = ParseMode.HTML
+                u.message.reply_text('✅ HTML Enabled', reply_markup=add_keyboard(c))
 
         def add_text(u:Update, c:CallbackContext):
+            text = u.message.text
+            if c.user_data['parser'] == ParseMode.HTML:
+                text = str(self.purge(text,False))
             c.user_data['messages'].append(
                 {
                     'type':'text',
-                    'text': u.effective_message.text,
+                    'text': text,
                     'parser': c.user_data['parser']
                 }
             )
             c.user_data['last-message'].delete()
             c.user_data['last-message'] = u.message.reply_text('OK, I received your message now what? (send a message to add)', 
             reply_markup = add_keyboard(c))
-            return STATE_ADD
+            return self.STATE_ADD
 
         def add_photo(u:Update, c:CallbackContext):
+            text = u.message.caption
+            if c.user_data['parser'] == ParseMode.HTML:
+                text = str(self.purge(text,False))
             c.user_data['messages'].append(
                 {
                     'type': 'photo',
                     'photo': u.message.photo[-1],
-                    'caption': u.message.caption,
+                    'caption': text,
                     'parser': c.user_data['parser']
                 }
             )
@@ -325,7 +341,7 @@ class BotHandler:
             c.user_data['last-message'] = u.message.reply_text(
                 'OK, I received photo%s now what? (send a message to add)'%('s' if len(u.message.photo)>1 else ''),
                 reply_markup = add_keyboard(c))
-            return STATE_ADD
+            return self.STATE_ADD
 
         text_markup = InlineKeyboardMarkup([
             [
@@ -341,12 +357,6 @@ class BotHandler:
                 InlineKeyboardButton('❌Delete', callback_data = 'delete')
             ]
         ])
-
-        parse_error = r'😟 there is a problem, can not parse message\(s\)\. your message\(s\) may contain unescaped chars\.'+\
-                        "\nplease escape all chars below with `'\\\\'`:\n"+\
-                        "`'_', '*', '[', ']', '(', ')', '~', '\\`', '>', '#', '+', '-', '=', '|', '{', '}', '.', '!'`\n"+\
-                        "And also escape all `'\\`'` and `'\\\\'` inside pre and code entities\n"+\
-                        "please fix this problem\\."
 
         def cleanup_last_preview(chat_id, c: CallbackContext):
             if 'prev-dict' in c.user_data:
@@ -368,9 +378,9 @@ class BotHandler:
                             parse_mode = msg['parser'],
                             reply_markup = text_markup
                         ).message_id
-                    except BadRequest:
+                    except BadRequest as ex:
                         msg_id = chat.send_message(
-                            msg['text']+'\n\n⚠️ CAN NOT PARSE.',
+                            msg['text']+'\n\n⚠️ CAN NOT PARSE.\n'+ex.message,
                             reply_markup = text_markup
                         ).message_id
                         c.user_data['had-error'] = True
@@ -384,28 +394,28 @@ class BotHandler:
                             parse_mode = msg['parser'],
                             reply_markup = photo_markup
                         ).message_id
-                    except BadRequest:
+                    except BadRequest as ex:
                         msg_id = chat.send_photo(
                             msg['photo'],
-                            caption = msg['caption']+'\n\n⚠️ CAN NOT PARSE.',
+                            caption = msg['caption']+'\n\n⚠️ CAN NOT PARSE.\n'+ex.message,
                             reply_markup = photo_markup
                         ).message_id
                         c.user_data['had-error'] = True
 
                     c.user_data['prev-dict'][msg_id] = msg
                 else:
-                    logger.error('UNKNOWN MSG TYPE FOUND\n'+str(msg))
+                    logging.error('UNKNOWN MSG TYPE FOUND\n'+str(msg))
                     c.bot.send_message(self.ownerID, 'UNKNOWN MSG TYPE FOUND\n'+str(msg))
+                    self.reporter.bug('unknown type message in preview', 'UNKNOWN MSG TYPE FOUND\n'+str(msg))
 
             if c.user_data.get('had-error'):
                 c.user_data['last-message'] = u.message.reply_text(
-                    parse_error,
-                    parse_mode = ParseMode.MARKDOWN_V2,
+                    '🛑 there is a problem with your messages, please fix them.',
                     reply_markup = add_keyboard(c))
             else:
                 c.user_data['last-message'] = u.message.reply_text('OK, now what?  (send a message to add)',
                 reply_markup = add_keyboard(c))
-            return STATE_ADD
+            return self.STATE_ADD
 
         def edit(u: Update, c: CallbackContext):
             query = u.callback_query
@@ -417,32 +427,34 @@ class BotHandler:
                 reply_markup = ReplyKeyboardMarkup([['❌Cancel']],resize_keyboard = True))
             c.user_data['editing-prev-id'] = query.message.message_id
             c.user_data['edit-cap'] = edit_cap
-            return STATE_EDIT
+            return self.STATE_EDIT
 
         def text_edited(u: Update, c:CallbackContext):
             if not u.message:
-                return STATE_EDIT
-            preview_msg_id = c.user_data['editing-prev-id']                             #id of the message that bot sent as preview
-            msg = c.user_data['prev-dict'][preview_msg_id]                              #get msg by searcing preview message id in prev-dict
+                return self.STATE_EDIT
+            preview_msg_id = c.user_data['editing-prev-id']     #id of the message that bot sent as preview
+            msg = c.user_data['prev-dict'][preview_msg_id]      #get msg by searching preview message id in prev-dict
             edited_txt = u.message.text
+            if c.user_data['parser'] == ParseMode.HTML:
+                edited_txt = str(self.purge(edited_txt, False))
             if msg.get('had-error'):
                 del(msg['had-error'])
             if c.user_data.get('had-error'):
                 del(c.user_data['had-error'])
             msg['parser'] = c.user_data['parser']
             if msg['type'] == 'text':
-                msg['text'] = edited_txt                                                #change message text
+                msg['text'] = edited_txt            #change message text
                 try:
-                    c.bot.edit_message_text(                                            #edit preview message text
+                    c.bot.edit_message_text(        #edit preview message text
                         edited_txt,
                         u.effective_chat.id,
                         preview_msg_id,
                         parse_mode = msg['parser'],
                         reply_markup = text_markup
                     )
-                except:
+                except BadRequest as ex:
                     c.bot.edit_message_text(
-                        edited_txt+'\n\n⚠️ CAN NOT PARSE.',
+                        edited_txt+'\n\n⚠️ CAN NOT PARSE.\n'+ex.message,
                         u.effective_chat.id,
                         preview_msg_id,
                         reply_markup = text_markup
@@ -460,11 +472,11 @@ class BotHandler:
                             parse_mode = msg['parser'],
                             reply_markup = photo_markup
                         )
-                    except:
+                    except BadRequest as ex:
                         c.bot.edit_message_caption(
                             u.effective_chat.id,
                             preview_msg_id,
-                            caption = edited_txt+'\n\n⚠️ CAN NOT PARSE.',
+                            caption = edited_txt+'\n\n⚠️ CAN NOT PARSE.\n'+ex.message,
                             reply_markup = photo_markup
                         )
                         msg['had-error'] = True
@@ -482,30 +494,35 @@ class BotHandler:
                     )
             else:
                 #Log this bug
-                logger.error('UNKNOWN MSG TYPE FOUND\n'+str(msg))
+                logging.error('UNKNOWN MSG TYPE FOUND\n'+str(msg))
                 c.bot.send_message(self.ownerID, 'UNKNOWN MSG TYPE FOUND\n'+str(msg))
 
             if c.user_data.get('had-error'):
                 c.user_data['last-message'] = u.message.reply_text(
-                    parse_error,
+                    '🛑 there is a problem with your messages, please fix them.',
                     parse_mode = ParseMode.MARKDOWN_V2,
                 reply_markup = add_keyboard(c))
             else:
                 c.user_data['last-message'] = u.message.reply_text('✅ Message edited; now you can add more messages or send it',
                 reply_markup = add_keyboard(c))
-            return STATE_ADD
+            return self.STATE_ADD
 
         def photo_edited(u: Update, c: CallbackContext):
             preview_msg_id = c.user_data['editing-prev-id']                             #id of the message that bot sent as preview
-            msg = c.user_data['prev-dict'][preview_msg_id]                              #get msg by searcing preview message id in prev-dict
+            msg = c.user_data['prev-dict'][preview_msg_id]                              #get msg by searching preview message id in prev-dict
             if msg.get('had-error'):
                 del(msg['had-error'])
             if c.user_data.get('had-error'):
                 del(c.user_data['had-error'])
             msg['parser'] = c.user_data['parser']
+            msg['photo'] = u.message.photo[-1]
+            msg['caption'] = u.message.caption
+            if c.user_data['parser'] == ParseMode.HTML:
+                msg['caption'] = str(self.purge(msg['caption'],False))
+            if c.user_data['parser'] == ParseMode.MARKDOWN_V2:
+                msg['caption'] = u.message.caption_markdown_v2
+                
             if msg['type'] == 'photo':
-                msg['photo'] = u.message.photo[-1]
-                msg['caption'] = u.message.caption
                 try:
                     c.bot.edit_message_media(
                         u.effective_chat.id,
@@ -515,13 +532,13 @@ class BotHandler:
                             caption = msg['caption'],
                             parse_mode = msg['parser'])
                     )
-                except:
+                except BadRequest as ex:
                     c.bot.edit_message_media(
                         u.effective_chat.id,
                         preview_msg_id,
                         media = InputMediaPhoto(
                             media = msg['photo'],
-                            caption = msg['caption']+'\n\n⚠️ CAN NOT PARSE.')
+                            caption = msg['caption']+'\n\n⚠️ CAN NOT PARSE.\n'+ex.message)
                     )
                     msg['had-error'] = True
                     c.user_data['had-error'] = True
@@ -529,8 +546,6 @@ class BotHandler:
                 #change message type to photo
                 msg['type'] = 'photo'
                 del(msg['text'])
-                msg['photo'] = u.message.photo[-1]
-                msg['caption'] = u.message.caption
                 c.bot.edit_message_text(
                     '⚠️ This message type had been changed from text to photo. '+\
                     'You can request for a new preview to see this message.',
@@ -539,18 +554,18 @@ class BotHandler:
                 )
             else:
                 #report bug
-                logger.error('UNKNOWN MSG TYPE FOUND\n'+str(msg))
+                logging.error('UNKNOWN MSG TYPE FOUND\n'+str(msg))
                 c.bot.send_message(self.ownerID, 'UNKNOWN MSG TYPE FOUND\n'+str(msg))
 
             if c.user_data.get('had-error'):
                 c.user_data['last-message'] = u.message.reply_text(
-                    parse_error,
+                    '🛑 there is a problem with your messages, please fix them.',
                     parse_mode = ParseMode.MARKDOWN_V2,
                 reply_markup = add_keyboard(c))
             else:
                 c.user_data['last-message'] = u.message.reply_text('✅ Message edited; now you can add more messages or send it',
                 reply_markup = add_keyboard(c))
-            return STATE_ADD
+            return self.STATE_ADD
 
         def delete(u: Update, c: CallbackContext):
             query = u.callback_query
@@ -563,7 +578,7 @@ class BotHandler:
             c.user_data['last-message'].delete()
             c.user_data['last-message'] = self.bot.send_message(
                 u.effective_chat.id, 'OK, now you can send message to add', reply_markup = add_keyboard(c))
-            return STATE_ADD
+            return self.STATE_ADD
 
         def deleting(u: Update, c: CallbackContext):
             query = u.callback_query
@@ -579,14 +594,14 @@ class BotHandler:
             c.user_data['last-message'].delete()
             c.user_data['last-message'] = self.bot.send_message(
                 u.effective_chat.id, '⏳ Deleting a message...', reply_markup = ReplyKeyboardRemove())
-            return STATE_DELETE
+            return self.STATE_DELETE
 
         def confirm(u: Update, c: CallbackContext):
             c.user_data['last-message'].delete()
             c.user_data['last-message'] = self.bot.send_message(u.effective_chat.id,
                 'Are you sure, you want to send message' +
                 ('s' if len(c.user_data['messages']) > 1 else '') +
-                'to all users, goups and channels?',
+                'to all users, groups and channels?',
                 reply_markup = InlineKeyboardMarkup(
                     [
                         [
@@ -595,24 +610,24 @@ class BotHandler:
                         ]
                     ]
                 ))
-            return STATE_CONFIRM
+            return self.STATE_CONFIRM
 
         def send(u: Update, c: CallbackContext):
             query = u.callback_query
             if c.user_data.get('had-error'):
                 query.answer()
                 u.effective_chat.send_message(
-                    parse_error,
+                    '🛑 there is a problem with your messages, please fix them.',
                     parse_mode = ParseMode.MARKDOWN_V2,
                     reply_markup = add_keyboard(c)
                 )
-                return STATE_ADD
+                return self.STATE_ADD
             query.answer(
-                '✅ Done\nSending message to all users, goups and channels', show_alert = True)
-            self.logger.info('Sending message to chats')
+                '✅ Done\nSending message to all users, groups and channels', show_alert = True)
+            logging.info('Sending message to chats')
             c.user_data['last-message'].delete()
             c.user_data['last-message'] = self.bot.send_message(u.effective_chat.id,
-            '✅ Done\nSending message to all users, goups and channels')
+            '✅ Done\nSending message to all users, groups and channels')
 
             def send_message(chat_id):
                 chat = c.bot.get_chat(chat_id)
@@ -624,14 +639,14 @@ class BotHandler:
                                 msg['text'],
                                 parse_mode = msg['parser']
                             ).message_id
-                        except BadRequest:
+                        except BadRequest as ex:
                             chat.send_message(
-                                msg['text']+'\n\n⚠️ CAN NOT PARSE.',
+                                msg['text']+'\n\n⚠️ CAN NOT PARSE.\n'+ex.message,
                                 reply_markup = text_markup
                             )
                             c.user_data['had-error'] = True
                             msg['had-error'] = True
-                            return STATE_ADD
+                            return self.STATE_ADD
                     elif msg['type'] == 'photo':
                         try:
                             chat.send_photo(
@@ -639,26 +654,26 @@ class BotHandler:
                                 msg['caption'],
                                 parse_mode = msg['parser']
                             ).message_id
-                        except BadRequest:
+                        except BadRequest as ex:
                             chat.send_photo(
                                 msg['photo'],
-                                caption = msg['caption']+'\n\n⚠️ CAN NOT PARSE.'
+                                caption = msg['caption']+'\n\n⚠️ CAN NOT PARSE.\n'+ex.message
                             ).message_id
                             c.user_data['had-error'] = True
                             msg['had-error'] = True
-                            return STATE_ADD
+                            return self.STATE_ADD
 
             res = send_message(u.effective_chat.id)
             if res:
                 u.effective_chat.send_message(
-                    parse_error,
+                    '🛑 there is a problem with your messages, please fix them.',
                     parse_mode = ParseMode.MARKDOWN_V2,
                     reply_markup = add_keyboard(c)
                 )
                 return res
 
             for chat_id in self.iter_all_chats():
-                if chat_id == u.effective_chat.id:
+                if chat_id != u.effective_chat.id:
                     send_message(chat_id)
             
             cleanup_last_preview(u.effective_chat.id, c)
@@ -675,7 +690,7 @@ class BotHandler:
                     new_admin_id,
                     f'✅ Accepted, From now on, I know you as my admin')
                 self.adminID.append(new_admin_id)
-                self.__set_data__('adminID', self.adminID, DB = config_db)
+                self.__set_data__('adminID', self.adminID, DB = data_db)
                 self.admin_token.remove(self.admins_pendding[new_admin_id])
                 del(self.admins_pendding[new_admin_id])
                 query.answer('✅ Accepted')
@@ -699,12 +714,12 @@ class BotHandler:
 
         def unknown_query(u: Update, c: CallbackContext):
             query = u.callback_query
-            self.logger.warning('unknown query, query data:'+query.data)
+            logging.warning('unknown query, query data:'+query.data)
             query.answer("❌ ERROR\nUnknown answer", show_alert = True,)
 
         def cancel(state) -> typing.Callable:
             _cancel = None
-            if state in (STATE_ADD, STATE_CONFIRM):
+            if state in (self.STATE_ADD, self.STATE_CONFIRM):
                 def _cancel(u: Update, c: CallbackContext):
                     for key in ('messages', 'prev-dict', 'had-error', 'edit-cap', 'editing-prev-id'):
                         if key in c.user_data:
@@ -714,13 +729,13 @@ class BotHandler:
                     c.user_data['last-message'] = self.bot.send_message(u.effective_chat.id,
                         'Canceled', reply_markup = ReplyKeyboardRemove())
                     return ConversationHandler.END
-            elif state == STATE_EDIT:
+            elif state == self.STATE_EDIT:
                 def _cancel(u: Update, c: CallbackContext):
                     for key in ('edit-cap', 'editing-prev-id'):
                         if key in c.user_data:
                             del(c.user_data[key])
-                    return STATE_ADD
-            elif state == STATE_DELETE:
+                    return self.STATE_ADD
+            elif state == self.STATE_DELETE:
                 def _cancel(u: Update, c: CallbackContext):
                     query = u.callback_query
                     query.answer('❌ Canceled')
@@ -734,35 +749,35 @@ class BotHandler:
                         u.effective_chat.id, 
                         'OK, now what?  (send a message to add)',
                         reply_markup = add_keyboard(c))
-                    return STATE_ADD
+                    return self.STATE_ADD
             return _cancel
 
         send_all_conv_handler = ConversationHandler(
             entry_points = [CommandHandler('sendall', sendall)],
             states = {
-                STATE_ADD: [
+                self.STATE_ADD: [
                     MessageHandler(Filters.regex("^✅Send$"), confirm),
                     MessageHandler(Filters.regex("^👁Preview$"), preview),
                     MessageHandler(Filters.regex(
-                        "^❌Cancel$"), cancel(STATE_ADD)),
-                    MessageHandler(Filters.regex("^✅ Markdown Enabled$")|Filters.regex("^◻️ Markdown Disabled$"), toggle_markdown),
+                        "^❌Cancel$"), cancel(self.STATE_ADD)),
+                    MessageHandler(Filters.regex("^✅ HTML Enabled$")|Filters.regex("^◻️ HTML Disabled$"), toggle_markdown),
                     MessageHandler(Filters.text, add_text),
                     MessageHandler(Filters.photo, add_photo)
                 ],
-                STATE_EDIT: [
+                self.STATE_EDIT: [
                     MessageHandler(Filters.regex(
-                        "^❌Cancel$"), cancel(STATE_EDIT)),
-                    MessageHandler(Filters.regex("^✅ Markdown Enabled$")|Filters.regex("^◻️ Markdown Disabled$"), toggle_markdown),
+                        "^❌Cancel$"), cancel(self.STATE_EDIT)),
+                    MessageHandler(Filters.regex("^✅ HTML Enabled$")|Filters.regex("^◻️ HTML Disabled$"), toggle_markdown),
                     MessageHandler(Filters.text, text_edited),
                     MessageHandler(Filters.photo, photo_edited)
                 ],
-                STATE_DELETE: [
-                    CallbackQueryHandler(cancel(STATE_DELETE), pattern = '^no$'),
+                self.STATE_DELETE: [
+                    CallbackQueryHandler(cancel(self.STATE_DELETE), pattern = '^no$'),
                     CallbackQueryHandler(delete, pattern = '^yes$'),
                 ],
-                STATE_CONFIRM: [
+                self.STATE_CONFIRM: [
                     CallbackQueryHandler(send, pattern = '^yes$'),
-                    CallbackQueryHandler(cancel(STATE_CONFIRM), pattern = '^no$')
+                    CallbackQueryHandler(cancel(self.STATE_CONFIRM), pattern = '^no$')
                 ]
             },
             fallbacks = [
@@ -829,7 +844,7 @@ class BotHandler:
         def error_handler(update: object, context: CallbackContext) -> None:
             """Log the error and send a telegram message to notify the developer."""
             # Log the error before we do anything else, so we can see it even if something breaks.
-            logger.error(msg = "Exception while handling an update:",
+            logging.error(msg = "Exception while handling an update:",
                          exc_info = context.error)
 
             # traceback.format_exception returns the usual python message about an exception, but as a
@@ -837,10 +852,14 @@ class BotHandler:
             tb_list = traceback.format_exception(
                 None, context.error, context.error.__traceback__)
             tb_string = ''.join(tb_list)
-            line_no = context.error.__traceback__.tb_lineno
+            tb = context.error.__traceback__
+            s = traceback.extract_tb(tb)
+            f = s[-1]
+            lineno = f.lineno
+            filename = f.filename
             exception_type = type(context.error).__name__
             if self.reporter:
-                self.reporter.bug(f'{line_no}: {exception_type}',tb_string)
+                self.reporter.bug(f'L{lineno}@{filename}: {exception_type}',tb_string, {'line':lineno, 'file':filename})
 
             # Build the message with some markup and additional information about what happened.
             # You might need to add some logic to deal with messages longer than the 4096 character limit.
@@ -862,6 +881,23 @@ class BotHandler:
 
     # ----------------------------------------------------
 
+    def purge(self, html_str:str, images=True):
+        tags = self.SUPPORTED_HTML_TAGS
+        if images:
+            tags+='|img'
+        purger = purge = re.compile(r'</?(?!(?:%s)\b)\w+[^>]*/?>'%tags).sub      #This regex will purge any unsupported tag
+        soup = BeautifulSoup(purge('', html_str), 'html.parser')
+        for tag in soup.descendants:
+            #Remove any unsupported attribute
+            if tag.name in self.SUPPORTED_TAG_ATTRS:
+                attr = self.SUPPORTED_TAG_ATTRS[tag.name]
+                if attr in tag.attrs:
+                    tag.attrs = {attr: tag[attr]}
+            else:
+                tag.attrs = dict()
+        return soup
+
+
     def read_feed(self):
         feeds_xml = None
         with urlopen(self.source) as f:
@@ -869,21 +905,11 @@ class BotHandler:
         if feeds_xml:
             soup_page = BeautifulSoup(feeds_xml, 'xml')
             feeds_list = soup_page.findAll("item")
-            purge = re.compile(r'</?(?!(?:%s)\b)\w+[^>]*/?>'%SUPPORTED_HTML_TAGS).sub      #This regex will purge any unsupported tag
             skip = re.compile(r'</?[^>]*name = "skip"[^>]*>').match               #This regex will search for a tag named as "skip" like: <any name = "skip">
             for feed in feeds_list:
                 description = str(feed.description.text)
                 if not skip(description):     #if regex found something skip this post
-                    soup = BeautifulSoup(purge('', description), 'html.parser')
-                    for tag in soup.descendants:
-                        #Remove any unsupported attribute
-                        if tag.name in SUPPORTED_TAG_ATTRS:
-                            attr = SUPPORTED_TAG_ATTRS[tag.name]
-                            if attr in tag.attrs:
-                                tag.attrs = {attr: tag[attr]}
-                        else:
-                            tag.attrs = dict()
-                    #End for tag
+                    soup = self.purge(description)
                     description = str(soup)
                     messages = [{'type': 'text', 'text': description, 'markup': None}]
                     #Handle images
@@ -956,7 +982,7 @@ class BotHandler:
                         )
 
     def iter_all_chats(self):
-        self.logger.info('sending last feed to users')
+        logging.info('sending last feed to users')
         with env.begin(self.chats_db) as txn:
             for key, value in txn.cursor():
                 yield key.decode()
@@ -964,17 +990,17 @@ class BotHandler:
     def check_new_feed(self):
         feed, messages = self.read_feed()
         if feed:
-            date = self.__get_data__('last-feed-date', DB = self.config_db)
+            date = self.__get_data__('last-feed-date', DB = self.data_db)
             if date:
                 feed_date = parse(feed.pubDate.text)
                 if feed_date > date:
                     self.__set_data__('last-feed-date',
-                                      feed_date, DB = self.config_db)
+                                      feed_date, DB = self.data_db)
                     self.send_feed(feed, messages, self.get_string('new-feed'), self.iter_all_chats())
             else:
                 feed_date = parse(feed.pubDate.text)
                 self.__set_data__('last-feed-date',
-                                  feed_date, DB = self.config_db)
+                                  feed_date, DB = self.data_db)
                 self.send_feed(feed, messages, self.get_string('new-feed'), self.iter_all_chats())
         if self.__check__:
             self.check_thread = Timer(self.interval, self.check_new_feed)
@@ -1016,151 +1042,171 @@ class BotHandler:
 
 
 if __name__ == '__main__':
-    argv = sys.argv
-    if '-h' in argv:
-        print(
-            """PCWorms RSS telegram bot usage
-\t-t <token>\tspecify bot token for first use. Token will save in db/config/token for future use.
-\t-s <feeds url>\tdetermine feeds source url. (for first time)
-""")
+    parser = argparse.ArgumentParser('main.py',
+        description='Open source Telegram RSS-Bot server by bsimjoo\n'+\
+            'https://github.com/bsimjoo/Telegram-RSS-Bot'
+        )
+    
+    parser.add_argument('-r','--reset',
+    help='Reset stored data about chats or bot data',
+    default=False,required=False,choices=('data','chats','all'))
+
+    parser.add_argument('-c','--config',
+    help='Specify config file',
+    default='user-config.conf', required=False, type=argparse.FileType('r'))
+
+    args = parser.parse_args(sys.argv[1:])
+    config = ConfigParser(allow_no_value=False)
+    with args.config as cf:
+        config.read_string(cf.read())
+    main_config = config['main']
+    file_name = main_config.get('log-file')
     logging.basicConfig(
-        format = '%(asctime)s - %(name)s - %(levelname)s - %(message)s', level = logging.INFO)
-    logger = logging.getLogger()
-    env = lmdb.open(DB_PATH, max_dbs = 3)
-
-    if '-r' in argv and len(argv) > 1:
-        db_to_drop = argv[argv.index('-r')+1]
-        if db_to_drop in ('config', 'chats', 'all'):
-            answer = input(f'Are you sure you want to Remove "{db_to_drop}" databases?(yes/any)')
-            if answer != 'yes':
-                exit()
-            elif db_to_drop != 'all':
-                db = env.open_db(db_to_drop.encode())
-                with env.begin(db, write = True) as txn:
-                    d = env.open_db()
-                    txn.drop(d)
-            else:
-                for db_to_drop in ('config', 'chats'):
-                    db = env.open_db(db_to_drop.encode())
-                    with env.begin(db, write = True) as txn:
-                        d = env.open_db()
-                        txn.drop(d)
-            exit()
-
-    config_db = env.open_db(b'config')
+        format = '%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+        filename=file_name,
+        level = logging._nameToLevel.get(main_config.get('log-level','INFO').upper(),logging.INFO))
+    env = lmdb.open(main_config.get('db-path','db.lmdb'), max_dbs = 3)
     chats_db = env.open_db(b'chats')
-    token = ''
-    source = ''
-    language = 'en-us'
+    data_db = env.open_db(b'config')        #using old name for compatibility
+
+    if args.reset:
+        answer = input(f'Are you sure you want to Reset all "{args.reset}"?(yes | anything else means no)')
+        if answer != 'yes':
+            exit()
+        else:
+            if args.reset in ('data', 'all'):
+                with env.begin(data_db, write=True) as txn:
+                    d=env.open_db()
+                    txn.drop(d)
+            if args.reset in ('chats', 'all'):
+                with env.begin(chats_db, write=True) as txn:
+                    d=env.open_db()
+                    txn.drop(d)
+
+    language = main_config.get('language','en-us')
+    strings_file = main_config.get('strings-file', 'Default-strings.json')
+    checks=[
+        (strings_file, language),
+        (strings_file, 'en-us'),
+        ('Default-strings.json', language),
+        ('Default-strings.json', 'en-us')
+    ]
     strings = None
-    if not os.path.exists(STRINGS_PATH):
-        STRINGS_PATH = 'default-strings.json'
-    with open(STRINGS_PATH, encoding = 'utf8') as fp:
-        strings = json.load(fp)
+    for file, language in checks:
+        if os.path.exists(file):
+            with open(file) as f:
+                strings = json.load(f)
+            if language in strings:
+                strings = strings[language]
+                logging.info(f'using "{language}" language from "{file}" file')
+                break
+            else:
+                logging.error(f'"{language}" language code not found in "{file}"')
+        else:
+            logging.error(f'file "{file}" not found')
+
+    if not strings or strings == dict():
+        logging.error('Cannot use a strings file. exiting...')
+        exit(1)
 
     bug_reporter = None
     reporter = None
-    web_reporter = False
+    http_reporter = False
 
-    if '-b' in argv:
-        port = None
-        if len(argv)>1:
-            next_arg = argv[argv.index('-b')+1]
-            if not next_arg.startswith('-'):
-                if next_arg.isdigit():
-                    port = int(next_arg)
-                    port = port if 1023 < port < 65354 else None
+    if main_config.get('bug-reporter', 'off') in ('online', 'offline'):
         import BugReporter
         bug_reporter = BugReporter.BugReporter()
         reporter = bug_reporter('Telegram_RSS_Bot')
         
-        if port:
-            import cherrypy #user can ignore installing this mudole if now need for http reporting
-            class root:
-                def __init__(self, reporter, bug_reporter):
-                    self.reporter = reporter
-                    self.bug_reporter = bug_reporter
-
-                @cherrypy.expose
-                def index(self):
-                    res = '''<html style="weidth:100%"><body><h1>Bugs</h1><hr>
-                    <b>what is this page?</b> this project is using a simple 
-                    web server to report bugs(exceptions) that found in a running program.
-                    <h2>Bug logs</h2><pre language="json" style="weidth:100%;overflow:auto">'''+html.escape(self.bug_reporter.dumps())+'</pre></body></html>'
-                    return res
-
-                @cherrypy.expose
-                def build_state(self):
-                    cherrypy.response.headers['Content-Type'] = "image/svg+xml;charset=utf-8"
-                    if self.reporter.data['bugs_count']>0:
-                        return open('Docs/build faling.svg', 'rb')
-                    else:
-                        return open('Docs/build passing.svg', 'rb')
-
-                @cherrypy.expose
-                @cherrypy.tools.json_out()
-                def json(self):
-                    return self.bug_reporter.reports
-
+        if main_config.get('bug-reporter') == 'online':
+            try:
+                import cherrypy #user can ignore installing this mudole just if doesn't need reporting on http
             
-            cherrypy.log.access_log.propagate = False
-            cherrypy.tree.mount(root(reporter, bug_reporter),'/')
-            conf = {'global':
-                {
-                    "server.socket_host": '0.0.0.0',
-                    "server.socket_port": port,
-                    'log.screen': False
-                }
-            }
-            cherrypy.config.update(conf)
-            cherrypy.engine.start()
-            web_reporter = True
-            
-            logger.info(f'reporting bugs at {port} and saving them in bugs.json')
-        else:
-            logger.info(f'saving bugs in bugs.json')
+                class root:
 
-    with env.begin(config_db, write = True) as txn:
-        if '-t' in argv and len(argv) > 1:
-            token = argv[argv.index('-t')+1]
-            txn.put(b'token', token.encode())
-        else:
-            token = txn.get(b'token', b'').decode()
-        
-        if '-l' in argv and len(argv) > 1:
-            language = argv[argv.index('-l')+1].lower()
-            txn.put(b'language', token.encode())
-        else:
-            language = txn.get(b'language', b'').decode()
+                    @cherrypy.expose
+                    def index(self):
+                        res = '''<html>
+                        <head>
+                        <style>
+                            html, body{
+                                background-color: #17202a;
+                                color:  #d6eaf8;
+                            }
+                            pre, ssh-pre{
+                                width:80%;
+                                max-height: 30%;
+                                margin: auto;
+                                background-color: #f39c12;
+                                color:  #641e16;
+                                border-radius: 10px;
+                                padding: 10px;
+                                overflow-x: auto;
+                                white-space: pre-wrap;
+                                word-wrap: break-word;
+                            }
+                        </style>
+                        </head>
+                        <body><h1>Bugs</h1><hr>
+                        <p><b>What is this page?</b> This project uses a simple web
+                        server to report bugs (exceptions) in a running application.
+                        <p><b>What are groups?</b> Because of this project can be forked
+                        so each fork can have its own bugs. Although it is sometimes
+                        difficult to distinguish between original project bugs and forged
+                        projects, groups are a simple way to separate these bugs.<p>'''
 
-        if '-s' in argv and len(argv) > 1:
-            source = argv[argv.index('-s')+1]
-            txn.put(b'source', source.encode())
-        else:
-            source = txn.get(
-                b'source', b'https://pcworms.blog.ir/rss/').decode()
+                        for group, reporter in bug_reporter.reports.items():
+                            res+=f'<h2>Group: {group}</h2><hr>'
+                            for tag, content in reporter['tags'].items():
+                                link = ''
+                                if 'file' in content['custom-prop']:
+                                    lineno = content['custom-prop']['line']
+                                    filename = content['custom-prop']['file']
+                                    if os.path.exists(filename):
+                                        link = f' <a href="https://github.com/bsimjoo/Telegram-RSS-Bot/blob/main/{filename}#L{lineno}">🔸L{lineno}@{filename}</a></h3>'
+                                res+=f'<h3>&bull;Tag: <kbd>"{tag}"</kbd> Count: {content["count"]} {link}</h3>'
+                                res+=f'<pre>{content["message"]}</pre>'
+
+                        res+='<h3 align="center"><a href="/json">Raw JSON</a></h3></body></html>'
+                        return res
+
+                    @cherrypy.expose
+                    @cherrypy.tools.json_out()
+                    def json(self):
+                        return bug_reporter.reports
                 
+                conf = main_config.get('reporter-config-file','Bug-reporter.conf')
+                if os.path.exists(conf):
+                    cherrypy.log.access_log.propagate = False
+                    cherrypy.tree.mount(root(),'/')
+                    cherrypy.config.update(conf)
+                    cherrypy.engine.start()
+                    http_reporter = True
+            except ModuleNotFoundError:
+                logging.error('Cherrypy module not found, please first make sure that it is installed and then use http-bug-reporter')
+                logging.info('Can not run http bug reporter, skipping http, saving bugs in bugs.json')
+            except Exception as Argument:
+                logging.exception("Error occurred while running http server")
+                logging.info('Can not run http bug reporter, skipping http, saving bugs in bugs.json')
+            else:
+                logging.info(f'reporting bugs with http server and saving them as bugs.json')
+        else:
+            logging.info(f'saving bugs in bugs.json')
 
-    if token == '':
-            logger.error("No Token, exiting")
+    token = main_config.get('token')
+    if not token:
+            logging.error("No Token, exiting")
             sys.exit()
 
-    if language in strings:
-        strings = strings[language]
-    else:
-        logger.warning('Specified language is not supported, using "en-us" language.')
-        logger.info('You can find all strings in "strings.json" file for available languages or translating')
-        strings = strings['en-us']
-
-    bot_handler = BotHandler(logger, token, source, env,
-                             chats_db, config_db, strings, reporter)
+    bot_handler = BotHandler(token, main_config.get('source','https://pcworms.blog.ir/rss/'), env,
+                             chats_db, data_db, strings, reporter)
     bot_handler.run()
     bot_handler.idle()
     if bug_reporter:
-        logger.info('saving bugs report')
+        logging.info('saving bugs report')
         bug_reporter.dump()
-    if web_reporter:
-        logger.info('stoping web reporter')
+    if http_reporter:
+        logging.info('stoping http reporter')
         cherrypy.engine.stop()
     env.close()
     
