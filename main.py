@@ -122,7 +122,7 @@ class BotHandler:
         def handle_edited_msg(u: Update, c:CallbackContext):
             #TODO: Handle editing messages
             # Handle messages editing in /send_all could be usefull
-            # label: enhancement
+            # labels: enhancement
             u.edited_message.reply_text(self.strings['edited-message'])
         
         self.dispatcher.add_handler(MessageHandler(Filters.update.edited_message,handle_edited_msg))
