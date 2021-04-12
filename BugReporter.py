@@ -1,5 +1,6 @@
 import json
 import subprocess
+import logging
 from os.path import exists
 
 class __reporter__:
@@ -24,7 +25,12 @@ class __reporter__:
 class BugReporter:
     def __init__(self, file_path = 'bugs.json'):
         if exists(file_path):
-            self.reports = json.load(open(file_path))
+            try:
+                self.reports = json.load(open(file_path, encoding='utf8'))
+            except Exception as ex:
+                logging.exception(f'Exception while trying to parse "{file_path}".')
+                logging.warning('skipping parse bugs file.')
+                self.reports = dict()
         else:
             self.reports = dict()
         self.file_path = file_path
@@ -36,7 +42,7 @@ class BugReporter:
         return reporter
     
     def dump(self):
-        json.dump(self.reports, open(self.file_path, 'w'), indent = 2, ensure_ascii = False)
+        json.dump(self.reports, open(self.file_path, 'w', encoding='utf8'), indent = 2, ensure_ascii = False)
     
     def dumps(self):
         return json.dumps(self.reports, indent = 2, ensure_ascii = False)

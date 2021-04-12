@@ -19,6 +19,7 @@ from telegram.error import BadRequest
 from telegram.utils.helpers import DEFAULT_NONE
 from telegram.bot import Bot
 from telegram.ext import *
+from telegram.error import NetworkError
 from dateutil.parser import parse
 from datetime import datetime, timedelta
 from threading import Timer
@@ -117,6 +118,14 @@ class BotHandler:
         self.interval = self.__get_data__('interval', 5*60, data_db)
         self.__check__ = True
         self.reporter = bug_reporter if bug_reporter else None
+
+        def handle_edited_msg(u: Update, c:CallbackContext):
+            #TODO: Handle editing messages
+            # Handle messages editing in /send_all could be usefull
+            # label: enhancement
+            u.edited_message.reply_text(self.strings['edited-message'])
+        
+        self.dispatcher.add_handler(MessageHandler(Filters.update.edited_message,handle_edited_msg))
 
         @self.command
         def start(update: Update, _: CallbackContext):
@@ -266,8 +275,6 @@ class BotHandler:
                     self.interval = int(c.args[0])
                     self.__set_data__(
                         'interval', self.interval, self.data_db)
-                    #TODO: exception on message editing
-                    # labels: bug
                     u.message.reply_text('✅ Interval changed to'+str(self.interval))
                     return
             u.message.reply_markdown_v2('❌ Bad command, use `/set_interval {new interval in seconds}`')
@@ -847,6 +854,9 @@ class BotHandler:
             logging.error(msg = "Exception while handling an update:",
                          exc_info = context.error)
 
+            if type(context.error) is type(NetworkError):
+                return
+
             # traceback.format_exception returns the usual python message about an exception, but as a
             # list of strings rather than a single string, so we have to join them together.
             tb_list = traceback.format_exception(
@@ -856,7 +866,7 @@ class BotHandler:
             s = traceback.extract_tb(tb)
             f = s[-1]
             lineno = f.lineno
-            filename = f.filename
+            filename = os.path.basename(f.filename)
             exception_type = type(context.error).__name__
             if self.reporter:
                 self.reporter.bug(f'L{lineno}@{filename}: {exception_type}',tb_string, {'line':lineno, 'file':filename})
@@ -1138,7 +1148,7 @@ if __name__ == '__main__':
                                 max-height: 30%;
                                 margin: auto;
                                 background-color: #f39c12;
-                                color:  #641e16;
+                                color:  black;
                                 border-radius: 10px;
                                 padding: 10px;
                                 overflow-x: auto;
@@ -1163,7 +1173,7 @@ if __name__ == '__main__':
                                     lineno = content['custom-prop']['line']
                                     filename = content['custom-prop']['file']
                                     if os.path.exists(filename):
-                                        link = f' <a href="https://github.com/bsimjoo/Telegram-RSS-Bot/blob/main/{filename}#L{lineno}">🔸L{lineno}@{filename}</a></h3>'
+                                        link = f' <a href="https://github.com/bsimjoo/Telegram-RSS-Bot/blob/main/{filename}#L{lineno}">🔸may be here: L{lineno}@{filename}</a></h3>'
                                 res+=f'<h3>&bull;Tag: <kbd>"{tag}"</kbd> Count: {content["count"]} {link}</h3>'
                                 res+=f'<pre>{content["message"]}</pre>'
 

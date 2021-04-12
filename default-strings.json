@@ -30,7 +30,8 @@
         ],
         "time-limit-error": "Sorry, I can not answer you right now because of time limitation between two request, try again 2 mins later.",
         "unknown": "Unknown command",
-        "unknown-msg": "Sorry, I can't chat with anyone right now!"
+        "unknown-msg": "Sorry, I can't chat with anyone right now!",
+        "edited-message": "Sorry this bot can not handle edited messages, please resend your message"
     },
     "fa-ir": {
         "welcome": [
@@ -68,6 +69,7 @@
         ],
         "time-limit-error": ".با عرض پوزش اکنون به دلیل محدودیت زمان بین تو درخواست نمی توانم به شما پاسخ دهم. بعد از دو دقیقه مجددا تلاش کنید",
         "unknown": "متأسفم، دستوری که وارد کردید صحیح نیست",
-        "unknown-msg": "!متأسفم، در حال حاضر نمی توانم با کاربران چت کنم"
+        "unknown-msg": "!متأسفم، در حال حاضر نمی توانم با کاربران چت کنم",
+        "edited-message": "با عرض پوزش این ربات در حال حاضر از ویرایش پیام پشتیبانی نمی کند"
     }
 }
