@@ -81,18 +81,22 @@ git clone https://github.com/bsimjoo/Telegram_RSS_bot.git
 ```
 
 Change working directory to source directory and install requirements using this commands:
-```
+```bash
 cd ./Telegram_RSS_Bot
 python3 -m pip install --user -r requirements.txt
 ```
 wait until installation finish without any error. (You can report errors to me)
 
 Then configure server. this repository may update `config-example.conf`, but `user-config.conf` is ignored and it is for users
-```
+```bash
 cp config-example.conf user-config.conf
 ```
 Edit `user-config.conf` with a text editor, if you want to know about Bug-Reporter [see Bug reporter below](#bug-reporter--)
 
+Then run server
+```bash
+python3 main.py
+```
 Identify yourself as owner to bot. you can start a chat with your bot and then use this:
 ```
 /start {bot-token}
