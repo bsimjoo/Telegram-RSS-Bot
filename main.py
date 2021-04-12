@@ -25,8 +25,9 @@ from threading import Timer
 
 class BotHandler:
 
-    #All supported tags (Telegram + script image handler) seprated by '|'
-    SUPPORTED_HTML_TAGS = '|'.join(('a','b','strong','i','em','code','pre','s','strike','del','u','img'))
+    #All supported tags by telegram seprated by '|'
+    # this program will handle images it self
+    SUPPORTED_HTML_TAGS = '|'.join(('a','b','strong','i','em','code','pre','s','strike','del','u'))
     SUPPORTED_TAG_ATTRS = {'a':'href', 'img':'src', 'pre':'language'}
 
     STATE_ADD, STATE_EDIT, STATE_DELETE, STATE_CONFIRM = range(4)
@@ -126,7 +127,7 @@ class BotHandler:
             data['members-count'] = chat.get_members_count()-1
             if chat.type == Chat.PRIVATE:
                 data.update(user.to_dict())
-                message.reply_markdown_v2(self.get_string('wellcome'))
+                message.reply_markdown_v2(self.get_string('welcome'))
                 if len(_.args) == 1:
                     if _.args[0] == self.token:
                         if user.id in self.adminID:
@@ -230,10 +231,10 @@ class BotHandler:
             keys = ['❌Cancel']
             if len(c.user_data['messages']):
                 keys = ['✅Send', '👁Preview', '❌Cancel']
-            markdown = c.user_data['parser'] == ParseMode.MARKDOWN_V2
+            markdown = c.user_data['parser'] == ParseMode.HTML
             return ReplyKeyboardMarkup(
                 [
-                    [('✅ Markdown Enabled' if markdown else '◻️ Markdown Disabled')],
+                    [('✅ HTML Enabled' if markdown else '◻️ HTML Disabled')],
                     keys
                 ],
                 resize_keyboard=True
@@ -252,7 +253,6 @@ class BotHandler:
                 'OK, Send a message to forward it to all users',
                 reply_markup = add_keyboard(c))
             
-            
             return self.STATE_ADD
 
         @self.adminCommand
@@ -270,7 +270,7 @@ class BotHandler:
                     # labels: bug
                     u.message.reply_text('✅ Interval changed to'+str(self.interval))
                     return
-            u.message.reply_markdown_v2('❌ Bad command, use `/set_interval {new interval in secound}`')
+            u.message.reply_markdown_v2('❌ Bad command, use `/set_interval {new interval in seconds}`')
 
         # ----------------[User Commands]----------------
 
@@ -302,18 +302,21 @@ class BotHandler:
         # ----------[Conversation handlers]-------------
 
         def toggle_markdown(u: Update, c:CallbackContext):
-            if c.user_data['parser'] == ParseMode.MARKDOWN_V2:
+            if c.user_data['parser'] == ParseMode.HTML:
                 c.user_data['parser'] = DEFAULT_NONE
-                u.message.reply_text('◻️ Markdown Disabled', reply_markup=add_keyboard(c))
+                u.message.reply_text('◻️ HTML Disabled', reply_markup=add_keyboard(c))
             else:
-                c.user_data['parser'] = ParseMode.MARKDOWN_V2
-                u.message.reply_text('✅ Markdown Enabled', reply_markup=add_keyboard(c))
+                c.user_data['parser'] = ParseMode.HTML
+                u.message.reply_text('✅ HTML Enabled', reply_markup=add_keyboard(c))
 
         def add_text(u:Update, c:CallbackContext):
+            text = u.message.text
+            if c.user_data['parser'] == ParseMode.HTML:
+                text = str(self.purge(text,False))
             c.user_data['messages'].append(
                 {
                     'type':'text',
-                    'text': u.effective_message.text,
+                    'text': text,
                     'parser': c.user_data['parser']
                 }
             )
@@ -323,11 +326,14 @@ class BotHandler:
             return self.STATE_ADD
 
         def add_photo(u:Update, c:CallbackContext):
+            text = u.message.caption
+            if c.user_data['parser'] == ParseMode.HTML:
+                text = str(self.purge(text,False))
             c.user_data['messages'].append(
                 {
                     'type': 'photo',
                     'photo': u.message.photo[-1],
-                    'caption': u.message.caption,
+                    'caption': text,
                     'parser': c.user_data['parser']
                 }
             )
@@ -352,12 +358,6 @@ class BotHandler:
             ]
         ])
 
-        parse_error = r'😟 there is a problem, can not parse message\(s\)\. your message\(s\) may contain unescaped chars\.'+\
-                        "\nplease escape all chars below with `'\\\\'`:\n"+\
-                        "`'_', '*', '[', ']', '(', ')', '~', '\\`', '>', '#', '+', '-', '=', '|', '{', '}', '.', '!'`\n"+\
-                        "And also escape all `'\\`'` and `'\\\\'` inside pre and code entities\n"+\
-                        "please fix this problem\\."
-
         def cleanup_last_preview(chat_id, c: CallbackContext):
             if 'prev-dict' in c.user_data:
                 for msg_id in c.user_data['prev-dict']:
@@ -378,9 +378,9 @@ class BotHandler:
                             parse_mode = msg['parser'],
                             reply_markup = text_markup
                         ).message_id
-                    except BadRequest:
+                    except BadRequest as ex:
                         msg_id = chat.send_message(
-                            msg['text']+'\n\n⚠️ CAN NOT PARSE.',
+                            msg['text']+'\n\n⚠️ CAN NOT PARSE.\n'+ex.message,
                             reply_markup = text_markup
                         ).message_id
                         c.user_data['had-error'] = True
@@ -394,10 +394,10 @@ class BotHandler:
                             parse_mode = msg['parser'],
                             reply_markup = photo_markup
                         ).message_id
-                    except BadRequest:
+                    except BadRequest as ex:
                         msg_id = chat.send_photo(
                             msg['photo'],
-                            caption = msg['caption']+'\n\n⚠️ CAN NOT PARSE.',
+                            caption = msg['caption']+'\n\n⚠️ CAN NOT PARSE.\n'+ex.message,
                             reply_markup = photo_markup
                         ).message_id
                         c.user_data['had-error'] = True
@@ -406,11 +406,11 @@ class BotHandler:
                 else:
                     logging.error('UNKNOWN MSG TYPE FOUND\n'+str(msg))
                     c.bot.send_message(self.ownerID, 'UNKNOWN MSG TYPE FOUND\n'+str(msg))
+                    self.reporter.bug('unknown type message in preview', 'UNKNOWN MSG TYPE FOUND\n'+str(msg))
 
             if c.user_data.get('had-error'):
                 c.user_data['last-message'] = u.message.reply_text(
-                    parse_error,
-                    parse_mode = ParseMode.MARKDOWN_V2,
+                    '🛑 there is a problem with your messages, please fix them.',
                     reply_markup = add_keyboard(c))
             else:
                 c.user_data['last-message'] = u.message.reply_text('OK, now what?  (send a message to add)',
@@ -432,27 +432,29 @@ class BotHandler:
         def text_edited(u: Update, c:CallbackContext):
             if not u.message:
                 return self.STATE_EDIT
-            preview_msg_id = c.user_data['editing-prev-id']                             #id of the message that bot sent as preview
-            msg = c.user_data['prev-dict'][preview_msg_id]                              #get msg by searcing preview message id in prev-dict
+            preview_msg_id = c.user_data['editing-prev-id']     #id of the message that bot sent as preview
+            msg = c.user_data['prev-dict'][preview_msg_id]      #get msg by searching preview message id in prev-dict
             edited_txt = u.message.text
+            if c.user_data['parser'] == ParseMode.HTML:
+                edited_txt = str(self.purge(edited_txt, False))
             if msg.get('had-error'):
                 del(msg['had-error'])
             if c.user_data.get('had-error'):
                 del(c.user_data['had-error'])
             msg['parser'] = c.user_data['parser']
             if msg['type'] == 'text':
-                msg['text'] = edited_txt                                                #change message text
+                msg['text'] = edited_txt            #change message text
                 try:
-                    c.bot.edit_message_text(                                            #edit preview message text
+                    c.bot.edit_message_text(        #edit preview message text
                         edited_txt,
                         u.effective_chat.id,
                         preview_msg_id,
                         parse_mode = msg['parser'],
                         reply_markup = text_markup
                     )
-                except:
+                except BadRequest as ex:
                     c.bot.edit_message_text(
-                        edited_txt+'\n\n⚠️ CAN NOT PARSE.',
+                        edited_txt+'\n\n⚠️ CAN NOT PARSE.\n'+ex.message,
                         u.effective_chat.id,
                         preview_msg_id,
                         reply_markup = text_markup
@@ -470,11 +472,11 @@ class BotHandler:
                             parse_mode = msg['parser'],
                             reply_markup = photo_markup
                         )
-                    except:
+                    except BadRequest as ex:
                         c.bot.edit_message_caption(
                             u.effective_chat.id,
                             preview_msg_id,
-                            caption = edited_txt+'\n\n⚠️ CAN NOT PARSE.',
+                            caption = edited_txt+'\n\n⚠️ CAN NOT PARSE.\n'+ex.message,
                             reply_markup = photo_markup
                         )
                         msg['had-error'] = True
@@ -497,7 +499,7 @@ class BotHandler:
 
             if c.user_data.get('had-error'):
                 c.user_data['last-message'] = u.message.reply_text(
-                    parse_error,
+                    '🛑 there is a problem with your messages, please fix them.',
                     parse_mode = ParseMode.MARKDOWN_V2,
                 reply_markup = add_keyboard(c))
             else:
@@ -507,15 +509,20 @@ class BotHandler:
 
         def photo_edited(u: Update, c: CallbackContext):
             preview_msg_id = c.user_data['editing-prev-id']                             #id of the message that bot sent as preview
-            msg = c.user_data['prev-dict'][preview_msg_id]                              #get msg by searcing preview message id in prev-dict
+            msg = c.user_data['prev-dict'][preview_msg_id]                              #get msg by searching preview message id in prev-dict
             if msg.get('had-error'):
                 del(msg['had-error'])
             if c.user_data.get('had-error'):
                 del(c.user_data['had-error'])
             msg['parser'] = c.user_data['parser']
+            msg['photo'] = u.message.photo[-1]
+            msg['caption'] = u.message.caption
+            if c.user_data['parser'] == ParseMode.HTML:
+                msg['caption'] = str(self.purge(msg['caption'],False))
+            if c.user_data['parser'] == ParseMode.MARKDOWN_V2:
+                msg['caption'] = u.message.caption_markdown_v2
+                
             if msg['type'] == 'photo':
-                msg['photo'] = u.message.photo[-1]
-                msg['caption'] = u.message.caption
                 try:
                     c.bot.edit_message_media(
                         u.effective_chat.id,
@@ -525,13 +532,13 @@ class BotHandler:
                             caption = msg['caption'],
                             parse_mode = msg['parser'])
                     )
-                except:
+                except BadRequest as ex:
                     c.bot.edit_message_media(
                         u.effective_chat.id,
                         preview_msg_id,
                         media = InputMediaPhoto(
                             media = msg['photo'],
-                            caption = msg['caption']+'\n\n⚠️ CAN NOT PARSE.')
+                            caption = msg['caption']+'\n\n⚠️ CAN NOT PARSE.\n'+ex.message)
                     )
                     msg['had-error'] = True
                     c.user_data['had-error'] = True
@@ -539,8 +546,6 @@ class BotHandler:
                 #change message type to photo
                 msg['type'] = 'photo'
                 del(msg['text'])
-                msg['photo'] = u.message.photo[-1]
-                msg['caption'] = u.message.caption
                 c.bot.edit_message_text(
                     '⚠️ This message type had been changed from text to photo. '+\
                     'You can request for a new preview to see this message.',
@@ -554,7 +559,7 @@ class BotHandler:
 
             if c.user_data.get('had-error'):
                 c.user_data['last-message'] = u.message.reply_text(
-                    parse_error,
+                    '🛑 there is a problem with your messages, please fix them.',
                     parse_mode = ParseMode.MARKDOWN_V2,
                 reply_markup = add_keyboard(c))
             else:
@@ -596,7 +601,7 @@ class BotHandler:
             c.user_data['last-message'] = self.bot.send_message(u.effective_chat.id,
                 'Are you sure, you want to send message' +
                 ('s' if len(c.user_data['messages']) > 1 else '') +
-                'to all users, goups and channels?',
+                'to all users, groups and channels?',
                 reply_markup = InlineKeyboardMarkup(
                     [
                         [
@@ -612,17 +617,17 @@ class BotHandler:
             if c.user_data.get('had-error'):
                 query.answer()
                 u.effective_chat.send_message(
-                    parse_error,
+                    '🛑 there is a problem with your messages, please fix them.',
                     parse_mode = ParseMode.MARKDOWN_V2,
                     reply_markup = add_keyboard(c)
                 )
                 return self.STATE_ADD
             query.answer(
-                '✅ Done\nSending message to all users, goups and channels', show_alert = True)
+                '✅ Done\nSending message to all users, groups and channels', show_alert = True)
             logging.info('Sending message to chats')
             c.user_data['last-message'].delete()
             c.user_data['last-message'] = self.bot.send_message(u.effective_chat.id,
-            '✅ Done\nSending message to all users, goups and channels')
+            '✅ Done\nSending message to all users, groups and channels')
 
             def send_message(chat_id):
                 chat = c.bot.get_chat(chat_id)
@@ -634,9 +639,9 @@ class BotHandler:
                                 msg['text'],
                                 parse_mode = msg['parser']
                             ).message_id
-                        except BadRequest:
+                        except BadRequest as ex:
                             chat.send_message(
-                                msg['text']+'\n\n⚠️ CAN NOT PARSE.',
+                                msg['text']+'\n\n⚠️ CAN NOT PARSE.\n'+ex.message,
                                 reply_markup = text_markup
                             )
                             c.user_data['had-error'] = True
@@ -649,10 +654,10 @@ class BotHandler:
                                 msg['caption'],
                                 parse_mode = msg['parser']
                             ).message_id
-                        except BadRequest:
+                        except BadRequest as ex:
                             chat.send_photo(
                                 msg['photo'],
-                                caption = msg['caption']+'\n\n⚠️ CAN NOT PARSE.'
+                                caption = msg['caption']+'\n\n⚠️ CAN NOT PARSE.\n'+ex.message
                             ).message_id
                             c.user_data['had-error'] = True
                             msg['had-error'] = True
@@ -661,14 +666,14 @@ class BotHandler:
             res = send_message(u.effective_chat.id)
             if res:
                 u.effective_chat.send_message(
-                    parse_error,
+                    '🛑 there is a problem with your messages, please fix them.',
                     parse_mode = ParseMode.MARKDOWN_V2,
                     reply_markup = add_keyboard(c)
                 )
                 return res
 
             for chat_id in self.iter_all_chats():
-                if chat_id == u.effective_chat.id:
+                if chat_id != u.effective_chat.id:
                     send_message(chat_id)
             
             cleanup_last_preview(u.effective_chat.id, c)
@@ -755,14 +760,14 @@ class BotHandler:
                     MessageHandler(Filters.regex("^👁Preview$"), preview),
                     MessageHandler(Filters.regex(
                         "^❌Cancel$"), cancel(self.STATE_ADD)),
-                    MessageHandler(Filters.regex("^✅ Markdown Enabled$")|Filters.regex("^◻️ Markdown Disabled$"), toggle_markdown),
+                    MessageHandler(Filters.regex("^✅ HTML Enabled$")|Filters.regex("^◻️ HTML Disabled$"), toggle_markdown),
                     MessageHandler(Filters.text, add_text),
                     MessageHandler(Filters.photo, add_photo)
                 ],
                 self.STATE_EDIT: [
                     MessageHandler(Filters.regex(
                         "^❌Cancel$"), cancel(self.STATE_EDIT)),
-                    MessageHandler(Filters.regex("^✅ Markdown Enabled$")|Filters.regex("^◻️ Markdown Disabled$"), toggle_markdown),
+                    MessageHandler(Filters.regex("^✅ HTML Enabled$")|Filters.regex("^◻️ HTML Disabled$"), toggle_markdown),
                     MessageHandler(Filters.text, text_edited),
                     MessageHandler(Filters.photo, photo_edited)
                 ],
@@ -876,6 +881,23 @@ class BotHandler:
 
     # ----------------------------------------------------
 
+    def purge(self, html_str:str, images=True):
+        tags = self.SUPPORTED_HTML_TAGS
+        if images:
+            tags+='|img'
+        purger = purge = re.compile(r'</?(?!(?:%s)\b)\w+[^>]*/?>'%tags).sub      #This regex will purge any unsupported tag
+        soup = BeautifulSoup(purge('', html_str), 'html.parser')
+        for tag in soup.descendants:
+            #Remove any unsupported attribute
+            if tag.name in self.SUPPORTED_TAG_ATTRS:
+                attr = self.SUPPORTED_TAG_ATTRS[tag.name]
+                if attr in tag.attrs:
+                    tag.attrs = {attr: tag[attr]}
+            else:
+                tag.attrs = dict()
+        return soup
+
+
     def read_feed(self):
         feeds_xml = None
         with urlopen(self.source) as f:
@@ -883,21 +905,11 @@ class BotHandler:
         if feeds_xml:
             soup_page = BeautifulSoup(feeds_xml, 'xml')
             feeds_list = soup_page.findAll("item")
-            purge = re.compile(r'</?(?!(?:%s)\b)\w+[^>]*/?>'%self.SUPPORTED_HTML_TAGS).sub      #This regex will purge any unsupported tag
             skip = re.compile(r'</?[^>]*name = "skip"[^>]*>').match               #This regex will search for a tag named as "skip" like: <any name = "skip">
             for feed in feeds_list:
                 description = str(feed.description.text)
                 if not skip(description):     #if regex found something skip this post
-                    soup = BeautifulSoup(purge('', description), 'html.parser')
-                    for tag in soup.descendants:
-                        #Remove any unsupported attribute
-                        if tag.name in self.SUPPORTED_TAG_ATTRS:
-                            attr = self.SUPPORTED_TAG_ATTRS[tag.name]
-                            if attr in tag.attrs:
-                                tag.attrs = {attr: tag[attr]}
-                        else:
-                            tag.attrs = dict()
-                    #End for tag
+                    soup = self.purge(description)
                     description = str(soup)
                     messages = [{'type': 'text', 'text': description, 'markup': None}]
                     #Handle images
@@ -1036,7 +1048,7 @@ if __name__ == '__main__':
         )
     
     parser.add_argument('-r','--reset',
-    help='Reset stored datas about chats or bot data',
+    help='Reset stored data about chats or bot data',
     default=False,required=False,choices=('data','chats','all'))
 
     parser.add_argument('-c','--config',
@@ -1146,12 +1158,13 @@ if __name__ == '__main__':
                         for group, reporter in bug_reporter.reports.items():
                             res+=f'<h2>Group: {group}</h2><hr>'
                             for tag, content in reporter['tags'].items():
-                                lineno = content['custom-prop']['line']
-                                filename = content['custom-prop']['file']
                                 link = ''
-                                if os.path.exists(filename):
-                                    link = f' <a href="https://github.com/bsimjoo/Telegram-RSS-Bot/blob/main/{filename}#L{lineno}"> 🔸{filename} L{lineno}</a></h3>'
-                                res+=f'<h3>&bull;Tag <kbd>"{tag}"</kbd> Count: {content["count"]}{link}</h3>'
+                                if 'file' in content['custom-prop']:
+                                    lineno = content['custom-prop']['line']
+                                    filename = content['custom-prop']['file']
+                                    if os.path.exists(filename):
+                                        link = f' <a href="https://github.com/bsimjoo/Telegram-RSS-Bot/blob/main/{filename}#L{lineno}">🔸L{lineno}@{filename}</a></h3>'
+                                res+=f'<h3>&bull;Tag: <kbd>"{tag}"</kbd> Count: {content["count"]} {link}</h3>'
                                 res+=f'<pre>{content["message"]}</pre>'
 
                         res+='<h3 align="center"><a href="/json">Raw JSON</a></h3></body></html>'
@@ -1173,7 +1186,7 @@ if __name__ == '__main__':
                 logging.error('Cherrypy module not found, please first make sure that it is installed and then use http-bug-reporter')
                 logging.info('Can not run http bug reporter, skipping http, saving bugs in bugs.json')
             except Exception as Argument:
-                logging.exception("Error occured while running http server")
+                logging.exception("Error occurred while running http server")
                 logging.info('Can not run http bug reporter, skipping http, saving bugs in bugs.json')
             else:
                 logging.info(f'reporting bugs with http server and saving them as bugs.json')
