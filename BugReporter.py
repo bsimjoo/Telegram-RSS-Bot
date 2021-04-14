@@ -48,6 +48,9 @@ class BugReporter:
         
 
     def get_git_info(self):
+        dir = os.path.dirname(__file__)
+        if dir != '':
+            os.chdir(dir)
         try:
             short_hash = subprocess.check_output([self.git, 'describe', '--always'], stderr=subprocess.STDOUT).strip().decode()
             self.commit = subprocess.check_output([self.git, 'rev-parse', short_hash], stderr=subprocess.STDOUT).strip().decode()
