@@ -854,7 +854,7 @@ class BotHandler:
             logging.error(msg = "Exception while handling an update:",
                          exc_info = context.error)
 
-            if type(context.error) is type(NetworkError):
+            if isinstance(context.error, NetworkError):
                 return
 
             # traceback.format_exception returns the usual python message about an exception, but as a
@@ -1130,7 +1130,7 @@ if __name__ == '__main__':
         
         if main_config.get('bug-reporter') == 'online':
             try:
-                import cherrypy #user can ignore installing this mudole just if doesn't need reporting on http
+                import cherrypy #user can ignore installing this module just if doesn't need reporting on http
             
                 class root:
 
