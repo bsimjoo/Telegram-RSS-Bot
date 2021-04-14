@@ -96,12 +96,12 @@ class BotHandler:
         strings: dict,
         bug_reporter = None):
         #----[USE SOCKES]----
-        #import socks
-        #s = socks.socksocket()
-        #s.set_proxy(socks.SOCKS5, "localhost", 9090)
-        #self.updater = Updater(Token, request_kwargs = {'proxy_url': 'socks5h://127.0.0.1:9090/'})
+        import socks
+        s = socks.socksocket()
+        s.set_proxy(socks.SOCKS5, "localhost", 9090)
+        self.updater = Updater(Token, request_kwargs = {'proxy_url': 'socks5h://127.0.0.1:9090/'})
         #-----[NO PROXY]-----
-        self.updater = Updater(Token)
+        #self.updater = Updater(Token)
         #--------------------
         self.bot = self.updater.bot
         self.dispatcher = self.updater.dispatcher
@@ -117,7 +117,7 @@ class BotHandler:
         self.source = source
         self.interval = self.__get_data__('interval', 5*60, data_db)
         self.__check__ = True
-        self.reporter = bug_reporter if bug_reporter else None
+        self.bug_reporter = bug_reporter if bug_reporter else None
 
         def handle_edited_msg(u: Update, c:CallbackContext):
             #TODO: Handle editing messages
@@ -413,7 +413,7 @@ class BotHandler:
                 else:
                     logging.error('UNKNOWN MSG TYPE FOUND\n'+str(msg))
                     c.bot.send_message(self.ownerID, 'UNKNOWN MSG TYPE FOUND\n'+str(msg))
-                    self.reporter.bug('unknown type message in preview', 'UNKNOWN MSG TYPE FOUND\n'+str(msg))
+                    self.bug_reporter.bug('unknown type message in preview', 'UNKNOWN MSG TYPE FOUND\n'+str(msg))
 
             if c.user_data.get('had-error'):
                 c.user_data['last-message'] = u.message.reply_text(
@@ -868,8 +868,8 @@ class BotHandler:
             lineno = f.lineno
             filename = os.path.basename(f.filename)
             exception_type = type(context.error).__name__
-            if self.reporter:
-                self.reporter.bug(f'L{lineno}@{filename}: {exception_type}',tb_string, {'line':lineno, 'file':filename})
+            if self.bug_reporter:
+                self.bug_reporter.bug(f'L{lineno}@{filename}: {exception_type}', tb_string, line=lineno, file=filename)
 
             # Build the message with some markup and additional information about what happened.
             # You might need to add some logic to deal with messages longer than the 4096 character limit.
@@ -1070,6 +1070,10 @@ if __name__ == '__main__':
     with args.config as cf:
         config.read_string(cf.read())
     main_config = config['main']
+    if main_config.get('root-dir'):
+        os.chdir(main_config.get('root-dir'))
+    else:
+        os.chdir(os.path.dirname(__file__))
     file_name = main_config.get('log-file')
     logging.basicConfig(
         format = '%(asctime)s - %(name)s - %(levelname)s - %(message)s',
@@ -1125,8 +1129,11 @@ if __name__ == '__main__':
 
     if main_config.get('bug-reporter', 'off') in ('online', 'offline'):
         import BugReporter
-        bug_reporter = BugReporter.BugReporter()
-        reporter = bug_reporter('Telegram_RSS_Bot')
+        bugs_file = main_config.get('bugs-file','bugs.json')
+        use_git = main_config.getboolean('use-git',False)
+        git = main_config.get('git-command','git')
+        git_source = main_config.get('git-source')
+        bug_reporter = BugReporter.BugReporter(bugs_file, use_git, git, git_source)
         
         if main_config.get('bug-reporter') == 'online':
             try:
@@ -1140,50 +1147,53 @@ if __name__ == '__main__':
                         <head>
                         <style>
                             html, body{
-                                background-color: #17202a;
+                                background-color: #1b2631;
                                 color:  #d6eaf8;
                             }
                             pre, ssh-pre{
                                 width:80%;
                                 max-height: 30%;
                                 margin: auto;
-                                background-color: #f39c12;
-                                color:  black;
+                                background-color: #873600;
+                                color:  white;
                                 border-radius: 10px;
                                 padding: 10px;
                                 overflow-x: auto;
                                 white-space: pre-wrap;
                                 word-wrap: break-word;
                             }
+                            a:visited{
+                                color: #a569bd
+                            }
                         </style>
                         </head>
-                        <body><h1>Bugs</h1><hr>
-                        <p><b>What is this page?</b> This project uses a simple web
-                        server to report bugs (exceptions) in a running application.
-                        <p><b>What are groups?</b> Because of this project can be forked
-                        so each fork can have its own bugs. Although it is sometimes
-                        difficult to distinguish between original project bugs and forged
-                        projects, groups are a simple way to separate these bugs.<p>'''
+                        <body><h1 style="background-color: #d6eaf8; border-radius:10px; color:black">🐞 Bugs</h1>
+                        <p><b>What is this?</b> This project uses a simple web
+                        server to report bugs (exceptions) in a running application.</p>
+                        <h6><a href="/json">Show raw JSON</a></h6>'''
 
-                        for group, reporter in bug_reporter.reports.items():
-                            res+=f'<h2>Group: {group}</h2><hr>'
-                            for tag, content in reporter['tags'].items():
+                        if bug_reporter.bugs_count:
+                            res+=f'<h2>😔 {bug_reporter.bugs_count} bug(s) found</h2>'
+                            for tag, content in bug_reporter.bugs.items():
                                 link = ''
-                                if 'file' in content['custom-prop']:
-                                    lineno = content['custom-prop']['line']
-                                    filename = content['custom-prop']['file']
+                                if 'file' in content and bug_reporter.use_git:
+                                    lineno = content['line']
+                                    filename = content['file']
                                     if os.path.exists(filename):
-                                        link = f' <a href="https://github.com/bsimjoo/Telegram-RSS-Bot/blob/main/{filename}#L{lineno}">🔸may be here: L{lineno}@{filename}</a></h3>'
+                                        link = f' <a href="{bug_reporter.git_source}/blob/{bug_reporter.commit}/{filename}#L{lineno}">🔸may be here: L{lineno}@{filename}</a></h3>'
                                 res+=f'<h3>&bull;Tag: <kbd>"{tag}"</kbd> Count: {content["count"]} {link}</h3>'
-                                res+=f'<pre>{content["message"]}</pre>'
+                                if content["message"]:
+                                    res+=f'<pre>{content["message"]}</pre>'
+                        else:
+                            res+='<h1 align="center">😃 NO 🐞 FOUND 😉</h1>'
 
-                        res+='<h3 align="center"><a href="/json">Raw JSON</a></h3></body></html>'
+                        res+='</body></html>'
                         return res
 
                     @cherrypy.expose
                     @cherrypy.tools.json_out()
                     def json(self):
-                        return bug_reporter.reports
+                        return bug_reporter.data
                 
                 conf = main_config.get('reporter-config-file','Bug-reporter.conf')
                 if os.path.exists(conf):
@@ -1209,7 +1219,7 @@ if __name__ == '__main__':
             sys.exit()
 
     bot_handler = BotHandler(token, main_config.get('source','https://pcworms.blog.ir/rss/'), env,
-                             chats_db, data_db, strings, reporter)
+                             chats_db, data_db, strings, bug_reporter)
     bot_handler.run()
     bot_handler.idle()
     if bug_reporter:
