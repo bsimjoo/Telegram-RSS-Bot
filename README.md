@@ -25,8 +25,8 @@
  </a>
  </p>
  <p align="center">
- A simple telegram bot that started for <a href="http://pcworms.blog.ir">pcworms.blog.ir</a> weblog that read RSS Feeds and send newest feed to all chats(in this article chats = [all PVs, all GPs and all channels]).
-Administrators can also send photos, markdown or simple text messages to chats.</p>
+ A simple telegram bot that read RSS Feeds and send newest feed to all chats(in this article chats = [all PVs, all GPs and all channels]).
+Administrators can also send photos, html or simple text messages to chats and ...</p>
 </p>
 
 ## Owner
