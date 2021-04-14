@@ -1070,10 +1070,6 @@ if __name__ == '__main__':
     with args.config as cf:
         config.read_string(cf.read())
     main_config = config['main']
-    if main_config.get('root-dir'):
-        os.chdir(main_config.get('root-dir'))
-    else:
-        os.chdir(os.path.dirname(__file__))
     file_name = main_config.get('log-file')
     logging.basicConfig(
         format = '%(asctime)s - %(name)s - %(levelname)s - %(message)s',
