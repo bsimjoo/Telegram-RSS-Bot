@@ -108,7 +108,7 @@ If your about to reset database you can use `-r {database}` to reset `chats`, `d
 <b>:warning: <font color="orange">This action can not be undone</font></b>
 
 # Bug Reporter
-I wrote a module that reports exceptions or any custom message and counts them, then I can show the number of bugs of a running server and then track and fix them. The bug reporter is off by default, but if you are interested you can save the bugs to a local file `bugs.json` in offline mode, or run the bug report http server in online mode to see them through an http server (click on [bugs or builds badge at top](http://de1.hashbang.sh:7191) badge to see an example). The default configuration of the http bug reporter is saved in `Bug-reporter.conf` but you can config server to use your own config file.
+I wrote a module that reports exceptions or any custom message and counts them, then I can show the number of bugs of a running server and then track and fix them. The bug reporter is off by default, but if you are interested you can save the bugs to a local file `bugs.json` in offline mode, or run the bug report http server in online mode to see them through an http server (click on [bugs or builds badge at top](http://de1.hashbang.sh:7191) to see an example). The default configuration of the http bug reporter is saved in `Bug-reporter.conf` but you can config server to use your own config file.
 
 **Notice** Don't forget to install `cherrypy` before using http bug reporter. use `python3 -m pip install cherrypy`
 
