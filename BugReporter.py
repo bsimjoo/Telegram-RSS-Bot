@@ -22,8 +22,8 @@ class BugReporter:
         self.data={
             'commit':self.commit,
             'bugs':self.bugs,
-            'build-state':self.build_state,
-            'bugs-count':self.bugs_count
+            'build_state':self.build_state,
+            'bugs_count':self.bugs_count
         }
 
     def load_file(self, file_path):
@@ -35,15 +35,15 @@ class BugReporter:
                     data = json.load(f)
             except:
                 logging.exception('Can not parse bugs file')
+                return
             if self.use_git:
                 #compare commit
-                if self.commit == data.get('commit') and data.get('commit'):
-                    self.build_state = data.get('build-state','passing')
-                    self.bugs = data.get('bugs',dict())
-                    self.bugs_count = data.get('bugs-count',0)
-            else:
-                self.bugs = data.get('bugs',dict())
-                self.bugs_count = data.get('bugs-count',0)
+                if self.commit != data.get('commit') or not data.get('commit'):
+                    return
+            
+            self.bugs = data.get('bugs',dict())
+            self.build_state = data.get('build_state','passing')
+            self.bugs_count = data.get('bugs_count',0)
         self.__update_data__()
         
 
