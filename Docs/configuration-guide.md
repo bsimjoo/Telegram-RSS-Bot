@@ -10,7 +10,7 @@ Create your-own copy of `config-example.conf` and name it as `user-config.conf`.
 | `log-level` | :heavy_check_mark: | `info` | `info`, `warning`, `error`, `critical` | Log level |
 | `log-file` | | log.log | `path` | optionally you can redirect logs to a file |
 | `db-path` | :heavy_check_mark: | db.lmdb | `Directory` | Directory of [LMDB database](https://en.wikipedia.org/wiki/Lightning_Memory-Mapped_Database) |
-| `bug-reporter` | | `off` | `off`, `offline`, `online` |Bug-reporter is a service that count exceptions. If value is `online` you must install Cherrypy. Read [Bug-Reporter in Readme.md](../#bug-reporter-). Following configuration needed if using bug-reporter |
+| `bug-reporter` | | `off` | `off`, `offline`, `online` |Bug-reporter is a service that count exceptions. If value is `online` you must install Cherrypy. Read [Bug-Reporter in Readme.md](../README.md/#bug-reporter-). Following configuration needed if using bug-reporter |
 | `reporter-config-file` | | Bug-reporter.conf | `path` | Another config file that contains [Cherrypy configuration](https://docs.cherrypy.org/en/latest/config.html) |
 | `bugs-file` | :white_check_mark: | ./bugs.json | `path` | Required if your using Bug reporter (`offline` or `online` mode) |
 | `use-git` | | `false` | `boolean` | Bug-reporter can use git to get repository information like commit or source repository, then it can generate a link to line that exception raised. |
