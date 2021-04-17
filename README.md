@@ -111,6 +111,8 @@ I wrote a module that reports exceptions or any custom message and counts them, 
 **Notice** Don't forget to install `cherrypy` before using http bug reporter. use `python3 -m pip install cherrypy`
 
 ---
+the "Telegram-RSS-Bot" logo and any parts thereof are Copyright (©) 2021 by BSimjoo. All rights reserved.
+
 Using [python-telegram-bot](https://github.com/python-telegram-bot/python-telegram-bot) api
 
 ###### this is my first telegram bot!
