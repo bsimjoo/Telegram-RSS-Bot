@@ -30,8 +30,7 @@ Administrators can also send photos, html or simple text messages to chats and .
 
 ## Owner
 The person who runs bot-server and has telegram-bot token. He usually has access to source code and Databases.
-
-*Owner can change source of feeds but default source is `http://pcworms.blog.ir/rss` read [Installation](#installation)*
+Owner can change source of feeds but default source is `http://pcworms.blog.ir/rss` read [Installation](#installation)
 
 ### How the owner is identified
 Owner (bot call him as lord!) can identify himself using the token he got from @botfather like this: `/start {bot-token}`
