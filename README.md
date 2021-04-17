@@ -55,13 +55,13 @@ python3 -m pip install {--user} -r requirements.txt
 
 *`--user` flag is optional and may needed in some situation*
 ## Configuration
+Read [Docs/Configuration-guide.md](Docs/configuration-guide.md)
+
 Copy default configuration example [config-example.conf](config-example.conf) to `user-config.conf` and add token to config file under `main` section
 ```config
 [main]
 token = {your bot token}
 ```
-
-Check [configuration-guide.md](Docs/configuration-guide.md) for more info about configurations
 
 **Note** that `config-example.conf` may be updated, so check for changes to each update. `user-config.conf` is ignored by git to prevent git pull problems
 ## Run server
