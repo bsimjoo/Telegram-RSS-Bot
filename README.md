@@ -55,7 +55,7 @@ python3 -m pip install {--user} -r requirements.txt
 
 *`--user` flag is optional and may needed in some situation*
 ## Configuration
-Read [Doc/Configuration-guide.md](Doc/Configuration-guide.md)
+Read [Docs/Configuration-guide.md](Doc/Configuration-guide.md)
 
 Copy default configuration example [config-example.conf](config-example.conf) to `user-config.conf` and add token to config file under `main` section
 ```config
