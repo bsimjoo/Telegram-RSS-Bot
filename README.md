@@ -1,6 +1,5 @@
 <p align="center">
- <img src="Docs/logo.png">
- <h1 align="center">Telegram RSS Bot</h1>
+ <img alt="Telegram-RSS-Bot" src="Docs/logo.png">
  <p align="center">
  <a href="http://de1.hashbang.sh:7191">
   <img alt="" src="https://img.shields.io/badge/dynamic/json?url=http://de1.hashbang.sh:7191/json&label=build&query=$.build_state&color=white">
