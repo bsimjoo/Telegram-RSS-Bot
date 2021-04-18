@@ -11,6 +11,9 @@
  <a href="https://github.com/bsimjoo/Telegram-RSS-Bot/labels/todo">
   <img src="https://img.shields.io/github/issues-raw/bsimjoo/Telegram-RSS-Bot/todo?color=orange&label=TODOs">
  </a>
+ <a href="https://www.codefactor.io/repository/github/bsimjoo/telegram-rss-bot">
+  <img alt="CodeFactor Grade" src="https://img.shields.io/codefactor/grade/github/bsimjoo/Telegram-RSS-Bot">
+ </a>
  <a href="https://github.com/bsimjoo/Telegram-RSS-Bot/releases">
   <img src="https://img.shields.io/github/v/release/bsimjoo/Telegram-RSS-Bot">
   <img alt="GitHub release (latest SemVer including pre-releases)" src="https://img.shields.io/github/v/release/bsimjoo/Telegram-RSS-Bot?include_prereleases&label=pre-release">
