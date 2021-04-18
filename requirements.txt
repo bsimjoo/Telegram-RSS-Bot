@@ -3,3 +3,4 @@ lmdb
 bs4
 lxml
 python-dateutil
+requests

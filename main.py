@@ -11,8 +11,8 @@ import os
 import traceback
 import html
 import argparse
+import requests
 from configparser import ConfigParser
-from urllib.request import urlopen
 from bs4 import BeautifulSoup, Comment
 from telegram import *
 from telegram.error import BadRequest
@@ -910,8 +910,8 @@ class BotHandler:
 
     def read_feed(self):
         feeds_xml = None
-        with urlopen(self.source) as f:
-            feeds_xml = f.read().decode('utf-8')
+        r = requests.get(self.source)
+        feeds_xml = r.content
         if feeds_xml:
             soup_page = BeautifulSoup(feeds_xml, 'xml')
             feeds_list = soup_page.findAll("item")
