@@ -79,7 +79,7 @@ There are three levels of access for the bot. (Owner, Admins, Users)
 
 ## :princess: Owner
 The person who runs bot-server and has telegram-bot token. He usually has access to source code and Databases.
-Owner can also change source of feeds but default source is `http://pcworms.blog.ir/rss` read [Installation](#Installation)
+Owner can also change source of feeds but default source is `http://pcworms.blog.ir/rss` read [Installation at top](arrow_down-installation)
 
 ### How the owner is identified
 Owner (bot call him as lord!) can identify himself using the token he received previously from @botfather as follow
@@ -133,7 +133,7 @@ I wrote a module that reports exceptions or any custom message and counts them, 
 
 **Notice** Don't forget to install `cherrypy` before using http bug reporter. use `python3 -m pip install cherrypy`
 
-# :vertical_traffic_light: License ![GPL-v3](https://img.shields.io/github/license/bsimjoo/Telegram-RSS-Bot)
+# :vertical_traffic_light: License [![GPL-v3](https://img.shields.io/github/license/bsimjoo/Telegram-RSS-Bot)](LICENSE.md)
 This project [licensed under GPL-v3](LICENSE.md)
 ### The Telegram-RSS-Bot logo
 the "Telegram-RSS-Bot" logo and any parts thereof are Copyright (©) 2021 by BSimjoo. All rights reserved.
