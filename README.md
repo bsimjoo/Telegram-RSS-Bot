@@ -3,7 +3,7 @@
  <p align="center">
  <a href="http://de1.hashbang.sh:7191">
   <img alt="" src="https://img.shields.io/badge/dynamic/json?url=http://de1.hashbang.sh:7191/json&label=build&query=$.build_state&color=white">
-  <img alt="Reported bugs from pcworms_bot project" src="https://img.shields.io/badge/dynamic/json?url=http://de1.hashbang.sh:7191/json&label=Bugs+found&query=$.bugs_count&color=red">
+  <img alt="Reported bugs from pcworms_bot project" src="https://img.shields.io/badge/dynamic/json?url=http://de1.hashbang.sh:7191/json&label=%F0%9F%90%9E+Bugs&query=$.bugs_count&color=red">
  </a>
  <a href="https://github.com/bsimjoo/Telegram-RSS-Bot/labels/bug">
   <img alt="Bug issue" src="https://img.shields.io/github/issues-raw/bsimjoo/Telegram-RSS-Bot/bug?color=red">
@@ -18,12 +18,12 @@
  <a href="LICENSE.md">
   <img src="https://img.shields.io/github/license/bsimjoo/Telegram-RSS-Bot">
  </a>
- <img src="https://img.shields.io/badge/Python-v3.8-blue">
+ <img src="https://img.shields.io/badge/Python-v3.8+-3776AB?logo=python&logoColor=white">
  <a href="https://core.telegram.org/bots/api-changelog">
   <img src="https://img.shields.io/badge/Bot%20API-5.1-blue?logo=telegram">
  </a>
  <a href="https://bsimjoo.github.io/Telegram-RSS-Bot/Bitcoin-Redirect">
-  <img alt="Donate" src="https://img.shields.io/badge/donate-bitcoin-orange?logo=bitcoin">
+  <img alt="Donate" src="https://img.shields.io/badge/donate-bitcoin-F7931A?logo=bitcoin">
  </a>
  </p>
  <p align="center">
