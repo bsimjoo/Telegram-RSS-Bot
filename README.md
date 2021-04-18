@@ -45,7 +45,7 @@ git checkout release
 Highly recommended to keep your server up to date using `git pull`
 
 ## Installation
-First install python. I recommend Python v3.8 because this project developed and tested with this version. So if you had any problem you can [create an issue](https://github.com/bsimjoo/Telegram-RSS-Bot/issues)
+First install python. I recommend Python v3.8+ because this project developed and tested with this version. So if you had any problem you can [create an issue](https://github.com/bsimjoo/Telegram-RSS-Bot/issues)
 
 change dir to source directory and install requirements with
 ```bash
