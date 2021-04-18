@@ -1,5 +1,5 @@
 <p align="center">
- <img alt="Telegram-RSS-Bot" src="Docs/logo.png">
+ <img alt="Telegram-RSS-Bot" src="docs/logo.png">
  <p align="center">
  <a href="http://de1.hashbang.sh:7191">
   <img alt="" src="https://img.shields.io/badge/dynamic/json?url=http://de1.hashbang.sh:7191/json&label=build&query=$.build_state&color=white">
@@ -55,7 +55,7 @@ python3 -m pip install {--user} -r requirements.txt
 
 *`--user` flag is optional and may needed in some situation*
 ## Configuration
-Read [Docs/Configuration-guide.md](Docs/configuration-guide.md)
+Read [docs/Configuration-guide.md](docs/configuration-guide.md)
 
 Copy default configuration example [config-example.conf](config-example.conf) to `user-config.conf` and add token to config file under `main` section
 ```config
