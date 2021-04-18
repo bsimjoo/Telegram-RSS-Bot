@@ -26,7 +26,7 @@
   <img src="https://img.shields.io/badge/Bot%20API-5.1-blue?logo=telegram">
  </a>
  <a href="https://bsimjoo.github.io/Telegram-RSS-Bot/Bitcoin-Redirect">
-  <img alt="Donate" src="https://img.shields.io/badge/donate-bitcoin-F7931A?logo=bitcoin">
+  <img alt="Donate" src="https://img.shields.io/badge/Donate-green?logo=bitcoin">
  </a>
  </p>
  <p align="center">
