@@ -46,6 +46,10 @@ You can also checkout the `release` branch to get the latest stable version
 ```bash
 git checkout release
 ```
+OR just run this command instead of the one above.
+```bash
+git clone clone https://github.com/bsimjoo/Telegram_RSS_bot.git --branch release
+```
 
 ### Update
 Highly recommended to keep your server up to date using `git pull`
