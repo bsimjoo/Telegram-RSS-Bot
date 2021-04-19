@@ -72,7 +72,7 @@ token = {your bot token}
 **Note** that `config-example.conf` may be updated, so check for changes to each update. `user-config.conf` is ignored by git to prevent git pull problems
 ## :running: Run server
 use `python main.py` to run server, you can also run server with a new config file with `python main.py -c {config file path}` (Default configurations are `user-config.conf` or `config-example.conf`).
-run `python main -h` to get help about available arguments.
+run `python main.py -h` to get help about available arguments.
 
 # :busts_in_silhouette: Access levels
 There are three levels of access for the bot. (Owner, Admins, Users)
