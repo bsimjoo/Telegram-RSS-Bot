@@ -49,7 +49,7 @@ git checkout release
 ```
 OR just run this command instead of the one above:
 ```bash
-git clone clone https://github.com/bsimjoo/Telegram_RSS_bot.git --branch release
+git clone https://github.com/bsimjoo/Telegram_RSS_bot.git --branch release
 ```
 
 ### Update
