@@ -29,7 +29,7 @@ If applicable, add screenshots to help explain your problem.
 **Additional context**
 Add any other context about the problem here.
 
-[//]: # ( Un-comment this part if you're using bug-reporter )
+[//]: # ( Un-comment this part if you're using bug-reporter remove: [//]: # ( ... ) )
 [//]: # (**Bug-Reporter**)
 [//]: # (```json)
 [//]: # (```)
