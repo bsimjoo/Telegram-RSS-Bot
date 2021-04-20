@@ -1,0 +1,118 @@
+html, body{
+    min-height: 100%;
+    min-width: 100%;
+    margin: 0px;
+}
+nav ul{
+    background-color: rgba(0,0,0,0.5)
+}
+
+.full-screen{
+    position: relative;
+    min-height: 100vh;
+    min-width: 100%;
+}
+
+.gradient{
+    background-image: radial-gradient(farthest-corner at 0px 0px, rgb(0,81,142), rgb(50, 0, 62) 78%, rgb(37, 1, 1));
+}
+
+.full-screen img.logo{
+    float: right;
+    max-height: 100vh;
+}
+
+.v-center {
+    position: absolute;
+    top: 50%;
+    -ms-transform: translateY(-50%);
+    transform: translateY(-50%);
+}
+
+.h-center {
+    position: absolute;
+    left: 50%;
+    -ms-transform: translateX(-50%);
+    transform: translateX(-50%);
+    transform: translate();
+}
+
+.vh-center {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%,-50%);
+}
+
+.middle {
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.intro-overlay{
+    float: left;
+    margin: auto auto auto 10px;
+    width: 40vw;
+}
+
+.intro-overlay img{
+    width: 40vw;
+    height: auto;
+}
+
+.intro-overlay h1{
+    display: inline-block;
+    font-weight: bold;
+    background: -webkit-linear-gradient(left,#00b0f0,#cc00ff, #ed7d31);
+    background-clip: text;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+.feature i{
+    margin: 10px;
+}
+
+i.icon {
+    font-size: 4.2rem;
+}
+
+.fa-rss{
+    color:#FFA500;
+}
+
+.fa-telegram-plane{
+    color:#26A5E4;
+}
+
+.fa-bitcoin {
+    color: gold;
+}
+
+.social {
+    font-size: 2rem;
+}
+
+.social a{
+    color: white;
+    text-decoration: none;
+}
+
+.social a:hover{
+    color:#26A5E4;
+}
+
+.content h2{
+    padding-bottom: 5px;
+    border-bottom: solid 3px white;
+}
+
+.content h3::before{
+    content: "• ";
+    color: #cc00ff;
+}
+
+.content h4::before{
+    content: "•• ";
+    color: #ed7d31;
+}

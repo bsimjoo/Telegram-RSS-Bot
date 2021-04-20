@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <title>Telegram-RSS-Bot</title>
+  <meta charset="UTF-8">
+  <!-- Make the page Mobile-Friendly -->
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <!-- Add OpenSans font -->
+  <link href="https://fonts.googleapis.com/css?family=Open+Sans" rel="stylesheet">
+
+  <!-- Add Meshki's files -->
+
+  <link rel="stylesheet" type="text/css" href="dist/css/meshki.min.css">
+  <link rel="stylesheet" type="text/css" href="dist/css/styles.css">
+
+  <link rel="stylesheet" type="text/css"
+    href="https://cdnjs.cloudflare.com/ajax/libs/meshki/2.2.0/plugins/meshki-extra-button-colors.min.css">
+
+  <script src="https://kit.fontawesome.com/5aa53ba1ac.js" crossorigin="anonymous"></script>
+  <script type="text/javascript" src="dist/js/meshki.min.js"></script>
+  <script type="text/javascript" src="dist/js/scripts.js"></script>
+</head>
+
+<body>
+  <div class="container">
+
+    <!-- This is your navbar -->
+    <nav class="fixed">
+      <ul>
+        <li><a class="logo" href="javascript:void(0)">Telegram-RSS-Bot</a></li>
+        <li><a href="https://github.com/bsimjoo/Telegram-RSS-Bot">Source</a></li>
+        <li><a href="download.html">Download</a></li>
+        <li><a href="donate.html">Donate</a></li>
+      </ul>
+    </nav>
+    <div class="full-screen gradient">
+      <img class="logo" src="media/logo.png">
+      <div class="intro-overlay v-center text-center">
+        <h1>Telegram-RSS-Bot</h1>
+        <img src="media/lines.png">
+        <a href="https://github.com/bsimjoo/Telegram-RSS-Bot"><button class="blue medium"><i class="fab fa-github"></i>
+            Source</button></a>
+        <a href="download.html"><button class="rose medium"><i class="fas fa-download"></i>
+            Download</button></a>
+        <a href="donate.html"><button class="orange medium"><i class="fas fa-hand-holding-usd"></i>
+            Donate</button></a>
+      </div>
+    </div>
+    <!-- The main content goes here -->
+    <div class="content">
+      <div class="text-center feature">
+        <i class="fas fa-rss"></i><i class="fas fa-arrow-right"></i><i class="icon fab fa-telegram-plane"></i>
+        <h5>Deliver your blog or website post to users</h5>
+        <span>
+          With this bot you can easily deliver your website/blog posts to users on telegram. users can use
+          this bot
+          directly or
+          get feeds through a channel or group that bot had joined.
+        </span>
+      </div>
+      <div class="row feature">
+        <div class="four col text-center">
+          <i class="fas fa-box-open"></i>
+          <h5>Free & Open-source</h5>
+          <span>You can You can run your own Bot server without costs or create your own version.</span>
+        </div>
+        <div class="four col text-center">
+          <i class="fas fa-rocket"></i>
+          <h5>Super easy</h5>
+          <span>It's too easy to run and config server. just follow guides and no more.</span>
+        </div>
+        <div class="four col text-center">
+          <i class="fas fa-plus-circle"></i>
+          <h5>Developing</h5>
+          <span>This project is developing. You will find more features in future. You can suggest more
+            features <a target="_blank"
+              href="https://github.com/bsimjoo/Telegram-RSS-Bot/issues/new?assignees=&labels=enhancement&template=feature_request.md&title=%5BFEATURE%5D+Your+title">here</a>.</span>
+        </div>
+      </div>
+
+      <h2 id="-rocket-getting-started"><i class="fas fa-rocket"></i> Getting started</h2>
+      <p>Follow Telegram instructions to <a href="https://core.telegram.org/bots#3-how-do-i-create-a-bot">create a
+          new
+          bot user</a> and get your Bot-Token. keep your Bot-Token safe.</p>
+      <p>Then download latest release or use git clone.</p>
+      <pre>
+        <code class="lang-bash">
+git clone https://github.com/bsimjoo/Telegram_RSS_bot.git
+        </code>
+      </pre>
+      <p>Note: Telegram-RSS-Bot is always under active development, so if you&#39;re looking for a stable and safe
+        release, use the compressed packages or checkout to release branch.</p>
+      <p>use this:</p>
+      <pre>
+        <code class="lang-bash">
+git checkout release
+        </code>
+      </pre>
+      <p>OR just run this command instead of the one above:</p>
+      <pre>
+        <code class="lang-bash">
+git clone https://github.com/bsimjoo/Telegram_RSS_bot.git --branch release
+        </code>
+      </pre>
+      <hr>
+      <h4 id="update">Update</h4>
+      <p>Highly recommended to keep your server up to date. if you are using <code>git</code> you can do an update
+        with
+        <code>git pull</code>
+      </p>
+      <hr>
+      <h3 id="-arrow_down-installation"><i class="fas fa-box-open"></i> Installation</h3>
+      <p>First install python. I recommend Python v3.8+ because this project developed and tested with this
+        version. So
+        if you had any problem you can <a href="https://github.com/bsimjoo/Telegram-RSS-Bot/issues">create an
+          issue</a>
+      </p>
+      <p>change dir to source directory and install requirements with</p>
+      <pre>
+        <code class="lang-bash">
+cd Telegram-RSS-Bot
+python3 -m pip install {--user} -r requirements.txt
+        </code>
+      </pre>
+      <p><em><code>--user</code> flag is optional and may needed in some situation</em></p>
+      <h3 id="-gear-configuration"><i class="fas fa-cog"></i> Configuration</h3>
+      <p>Read <a
+          href="https://github.com/bsimjoo/Telegram-RSS-Bot/blob/main/docs/configuration-guide.md">docs/Configuration-guide.md</a>
+      </p>
+      <p>Copy default configuration example <a href="config-example.conf">config-example.conf</a> to
+        <code>user-config.conf</code> and add token to config file under <code>main</code> section
+      </p>
+      <pre>
+        <code class="lang-config">
+[main]
+token = {your bot token}
+        </code>
+      </pre>
+      <p><strong>Note</strong> that <code>config-example.conf</code> may be updated, so check for changes to each
+        update. <code>user-config.conf</code> is ignored by git to prevent git pull problems</p>
+      <h3 id="-running-run-server"><i class="fas fa-running"></i> Run server</h3>
+      <p>use <code>python main.py</code> to run server, you can also run server with a new config file with
+        <code>python main.py -c {config file path}</code> (Default configurations are
+        <code>user-config.conf</code> or
+        <code>config-example.conf</code>).
+        run <code>python main.py -h</code> to get help about available arguments.
+      </p>
+      <h2 id="-busts_in_silhouette-access-levels"><i class="fas fa-users"></i> Access levels</h2>
+      <p>There are three levels of access for the bot. (Owner, Admins, Users)</p>
+      <h3 id="-princess-owner"><i class="fas fa-crown"></i> Owner</h3>
+      <p>The person who runs bot-server and has telegram-bot token. He usually has access to source code and
+        Databases.
+        Owner can also change source of feeds but default source is <code>http://pcworms.blog.ir/rss</code> read
+        <a href="arrow_down-installation">Installation at top</a>
+      </p>
+      <h4 id="how-the-owner-is-identified">How the owner is identified</h4>
+      <p>Owner (bot call him as lord!) can identify himself using the token he received previously from @botfather
+        as
+        follow</p>
+      <pre><code>/start{bot-token}</code></pre>
+      <h4 id="owner-can-">Owner can:</h4>
+      <ul>
+        <li>Generate one-time tokens and add admins. (No remove option at now)</li>
+        <li>Get muted notification of bot join/kick from a GP or channel.</li>
+        <li>Get notification of Errors and Exceptions (useful for report to me).</li>
+        <li>What Others (Admins and users) can do.</li>
+      </ul>
+      <h3 id="-sunglasses-admin"><i class="fas fa-user-shield"></i> Admin</h3>
+      <p>A user can only be promoted as an administrator if the owner generates a one-time token with the
+        <code>/gentoken</code> command and gives it to the user (this token is not the token previously received
+        from
+        BOTFATHER during the setup process). The user can then request once using the token they received, and
+        the robot
+        notifies its owner that the user is requesting a promotion, then the administrator can accept or decline
+        the
+        request. If the owner accepts the request, the user will be promoted and recognized as an administrator.
+      </p>
+      <pre><code>/start {one-time token generated by this bot}</code></pre>
+      <p>Owner will Receive a message with admin information and accept/decline buttons.</p>
+      <h4 id="admins-can-">Admins can:</h4>
+      <ul>
+        <li>Send photo, HTML or simple text messages to all chats</li>
+        <li>Send last feed to all chats</li>
+        <li>Get bot statistics (chats, members and admins count)</li>
+        <li>Get a list of all chats with username, full-name and ... (except profile photo and phone number)
+        </li>
+        <li>Change the interval between each check for a new post</li>
+      </ul>
+      <h4 id="users-can-">Users can:</h4>
+      <ul>
+        <li>Get last feed</li>
+        <li><em>No more option</em></li>
+      </ul>
+      <p><code>/help</code> command will give you a list of all available command related to your access level.
+      </p>
+      <h2 id="-tongue-languages"><i class="fas language"></i> Languages</h2>
+      <p>Available languages are:</p>
+      <ul>
+        <li>en-US</li>
+        <li>fa-IR</li>
+        <li><a href="https://github.com/bsimjoo/Telegram-RSS-Bot/edit/main/default-strings.json"><button class="blue">Add language</button></a></li>
+      </ul>
+      <p>You can translate <a href="default-strings.json">default-strings.json</a> file to add more languages but
+        this
+        bot will use same language for all users. Owner and admin interface is hardcoded in english (except
+        <code>/help</code> command).
+      </p>
+      <p><strong>Notice</strong> set your custom strings file path in configuration.</p>
+      <h2 id="-arrows_clockwise-reseting-databases"><i class="fas fa-sync-alt"></i> Reseting databases</h2>
+      <p>If you&#39;re about to reset database you can use <code>-r {database}</code> argument to reset
+        <code>chats</code>, <code>data</code> or <code>all</code> databases.
+      </p>
+      <p><b><span style="color:orange"><i class="fas fa-exclamation-triangle"></i> This action can not be undone</span></b></p>
+      <h2
+        id="-beetle-bug-reporter-https-img-shields-io-badge-dynamic-json-url-http-de1-hashbang-sh-7191-json-label-bugs-found-query-bugs_count-color-red-">
+        <i class="fas fa-bug"></i> Bug Reporter <img
+          src="https://img.shields.io/badge/dynamic/json?url=http://de1.hashbang.sh:7191/json&amp;label=Bugs+found&amp;query=$.bugs_count&amp;color=red"
+          alt="">
+      </h2>
+      <p>I wrote a module that reports exceptions or any custom message and counts them, then I can show the
+        number of
+        bugs of a running server and also build state and then track and fix bugs. The bug reporter is off by
+        default,
+        but if you are interested you can save the bugs to a local file <code>bugs.json</code> in offline mode,
+        or run
+        the bug report http server in online mode to see them through a http server (click on <a
+          href="http://de1.hashbang.sh:7191">bugs or build at top</a> to see an example). The default
+        configuration of
+        the http bug reporter is saved in <code>Bug-reporter.conf</code> but you can add your own config file to
+        server
+        config file (<code>user-config.conf</code>).</p>
+      <p><strong>Notice</strong> Don&#39;t forget to install <code>cherrypy</code> before using http bug reporter.
+        use
+        <code>python3 -m pip install cherrypy</code>
+      </p>
+      <h2
+        id="-vertical_traffic_light-license-gpl-v3-https-img-shields-io-github-license-bsimjoo-telegram-rss-bot-license-md-">
+        <i class="fas fa-traffic-light"></i> License <a href="LICENSE.md"><img
+            src="https://img.shields.io/github/license/bsimjoo/Telegram-RSS-Bot" alt="GPL-v3"></a>
+      </h2>
+      <p>This project <a href="LICENSE.md">licensed under GPL-v3</a></p>
+      <h5 id="the-telegram-rss-bot-logo">The Telegram-RSS-Bot logo</h5>
+      <p>the &quot;Telegram-RSS-Bot&quot; logo and any parts thereof are Copyright (©) 2021 by BSimjoo. All rights
+        reserved.</p>
+      <hr>
+      <p>Using <a href="https://github.com/python-telegram-bot/python-telegram-bot">python-telegram-bot</a> api
+        this project began for <a href="http://pcworms.blog.ir">pcworms.blog.ir</a> weblog, but now it is
+        available for
+        everyone. you can see customized version at <a
+          href="https://github.com/pcworms/PCworms_Bot">pcworms/PCworms_Bot</a></p>
+      <h6 id="this-is-my-first-telegram-bot-">this is my first telegram bot!</h6>
+    </div>
+
+    <!-- And finally, your cool footer -->
+    <footer>
+      <div class="row">
+        <div class="six col">
+          <p>contact me:<br>
+            <span class="social">
+              <a href="https://t.me/bsimjoo"><i class="fab fa-telegram"></i></a>
+              <a href="https://www.instagram.com/bsimjoo/"><i class="fab fa-instagram-square"></i></a>
+              <a href="https://github.com/bsimjoo"><i class="fab fa-github"></i></a>
+              <a href="mailto://bsimjoo@gmail.com"><i class="fas fa-at"></i></a></span>
+          </p>
+        </div>
+      </div>
+    </footer>
+  </div>
+
+</body>

@@ -1,6 +1,0 @@
-python-telegram-bot
-lmdb
-bs4
-lxml
-python-dateutil
-requests
