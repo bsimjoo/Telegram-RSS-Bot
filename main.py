@@ -1,28 +1,34 @@
+import argparse
+import html
 import json
-import lmdb
-import pickle
 import logging
-import sys
-import typing
-import string
+import os
+import pickle
 import random
 import re
-import os
+import string
+import sys
 import traceback
-import html
-import argparse
+import typing
+from collections import OrderedDict
 from configparser import ConfigParser
-from urllib.request import urlopen
-from bs4 import BeautifulSoup, Comment
-from telegram import *
-from telegram.error import BadRequest
-from telegram.utils.helpers import DEFAULT_NONE
-from telegram.bot import Bot
-from telegram.ext import *
-from telegram.error import NetworkError
-from dateutil.parser import parse
 from datetime import datetime, timedelta
 from threading import Timer
+from urllib.request import urlopen
+
+import lmdb
+from bs4 import BeautifulSoup
+from dateutil.parser import parse
+from telegram import (Chat, InlineKeyboardButton, InlineKeyboardMarkup,
+                      InputMediaPhoto, ParseMode, ReplyKeyboardMarkup,
+                      ReplyKeyboardRemove, Update)
+from telegram.bot import Bot
+from telegram.error import BadRequest, NetworkError
+from telegram.ext import (BaseFilter, CallbackContext, CallbackQueryHandler,
+                          CommandHandler, ConversationHandler, Filters,
+                          MessageHandler, Updater)
+from telegram.utils.helpers import DEFAULT_NONE
+
 
 class BotHandler:
 
@@ -35,15 +41,15 @@ class BotHandler:
 
     # --------------------[Decorators]--------------------
 
-    def message_handler(self, filter: BaseFilter):
+    def message_handler(self, filter_: BaseFilter):
         def decorator(func):
-            self.dispatcher.add_handler(MessageHandler(filter, func))
+            self.dispatcher.add_handler(MessageHandler(filter_, func))
             return func
         return decorator
 
-    def command(self, f = None, name = None):
+    def command(self, func = None, name = None):
         "add a command handler"
-        def decorator(func = f):
+        def decorator(func = func):
             self.dispatcher.add_handler(CommandHandler(
                 (name if name else func.__name__), func))
             return func
@@ -51,8 +57,8 @@ class BotHandler:
             return(decorator(f))
         return decorator
 
-    def adminCommand(self, f = None, skip_register = False):
-        def decorator(func = f):
+    def adminCommand(self, func = None, skip_register = False):
+        def decorator(func = func):
             def auth_and_run(u: Update, c: CallbackContext):
                 if u.effective_user.id in self.adminID:
                     return func(u, c)
@@ -67,8 +73,8 @@ class BotHandler:
             return decorator
         return decorator()
 
-    def ownerCommand(self, f = None, skip_register = False):
-        def decorator(func = f):
+    def ownerCommand(self, func = None, skip_register = False):
+        def decorator(func = func):
             def auth_and_run(u: Update, c: CallbackContext):
                 if u.effective_user.id == self.ownerID:
                     return func(u, c)
@@ -290,8 +296,8 @@ class BotHandler:
             self.send_feed(*self.read_feed(),msg_header = self.get_string('last-feed'),chat_ids = [u.effective_chat.id])
             c.user_data['time'] = datetime.now() + timedelta(minutes = 2)      #The next request is available 2 minutes later
 
-        @self.command
-        def help(u: Update, c: CallbackContext):
+        @self.command(name='help')
+        def _help(u: Update, c: CallbackContext):
             if u.effective_chat.id == self.ownerID:
                 u.message.reply_text(self.get_string('owner-help'))
             if u.effective_chat.id in self.adminID:
@@ -1133,7 +1139,7 @@ if __name__ == '__main__':
         
         if main_config.get('bug-reporter') == 'online':
             try:
-                import cherrypy #user can ignore installing this module just if doesn't need reporting on http
+                import cherrypy  # user can ignore installing this module just if doesn't need reporting on http
             
                 class root:
 
@@ -1211,8 +1217,8 @@ if __name__ == '__main__':
 
     token = main_config.get('token')
     if not token:
-            logging.error("No Token, exiting")
-            sys.exit()
+        logging.error("No Token, exiting")
+        sys.exit()
 
     bot_handler = BotHandler(token, main_config.get('source','https://pcworms.blog.ir/rss/'), env,
                              chats_db, data_db, strings, bug_reporter)
