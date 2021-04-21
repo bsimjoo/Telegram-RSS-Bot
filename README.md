@@ -25,11 +25,12 @@
  <a href="https://core.telegram.org/bots/api-changelog">
   <img src="https://img.shields.io/badge/Bot%20API-5.1-blue?logo=telegram">
  </a>
- <a href="https://bsimjoo.github.io/Telegram-RSS-Bot/Bitcoin-Redirect">
-  <img alt="Donate" src="https://img.shields.io/badge/Donate-green?logo=bitcoin">
+ <a href="https://bsimjoo.github.io/Telegram-RSS-Bot/donate">
+  <img alt="Donate" src="https://img.shields.io/badge/Donate-green">
  </a>
  </p>
  <p align="center">
+# [Telegram-RSS-Bot](https://bsimjoo.github.io/Telegram-RSS-Bot)
  A simple telegram bot that read RSS Feeds and send newest feed to all chats(in this article chats = [all PVs, all GPs and all channels]).
 Administrators can also send photos, html or simple text messages to chats and ...</p>
 </p>
