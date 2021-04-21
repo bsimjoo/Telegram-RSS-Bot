@@ -41,14 +41,19 @@ Then download latest release or use git clone.
 ```bash
 git clone https://github.com/bsimjoo/Telegram_RSS_bot.git
 ```
+Note: Telegram-RSS-Bot is always under active development, so if you're looking for a stable and safe release, use the compressed packages or checkout to release branch.
 
-You can also checkout the `release` branch to get the latest stable version
+use this:
 ```bash
 git checkout release
 ```
+OR just run this command instead of the one above:
+```bash
+git clone https://github.com/bsimjoo/Telegram_RSS_bot.git --branch release
+```
 
 ### Update
-Highly recommended to keep your server up to date using `git pull`
+Highly recommended to keep your server up to date. if you are using `git` you can do an update with `git pull`
 
 ## :arrow_down: Installation
 First install python. I recommend Python v3.8+ because this project developed and tested with this version. So if you had any problem you can [create an issue](https://github.com/bsimjoo/Telegram-RSS-Bot/issues)
@@ -72,7 +77,7 @@ token = {your bot token}
 **Note** that `config-example.conf` may be updated, so check for changes to each update. `user-config.conf` is ignored by git to prevent git pull problems
 ## :running: Run server
 use `python main.py` to run server, you can also run server with a new config file with `python main.py -c {config file path}` (Default configurations are `user-config.conf` or `config-example.conf`).
-run `python main -h` to get help about available arguments.
+run `python main.py -h` to get help about available arguments.
 
 # :busts_in_silhouette: Access levels
 There are three levels of access for the bot. (Owner, Admins, Users)
