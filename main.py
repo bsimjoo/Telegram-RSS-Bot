@@ -967,6 +967,9 @@ class BotHandler:
             return None
 
     def send_feed(self, feed, messages, msg_header, chat_ids):
+        #TODO:Un-handled users block
+        # it seems that a user had blocked bot and bot tried to send him message.
+        # labels: bug
         if len(messages) != 0:
             if messages[-1]['markup']:
                 messages[-1]['markup'].append(
@@ -1004,6 +1007,9 @@ class BotHandler:
                 yield key.decode()
 
     def check_new_feed(self):
+        #TODO:Check thread does not work after network error
+        # `check_new_feed` thread had been stopped and didn't check for new feed after an exception risen by requests
+        # labels: bug
         feed, messages = self.read_feed()
         if feed:
             date = self.__get_data__('last-feed-date', DB = self.data_db)
