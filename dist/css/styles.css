@@ -195,12 +195,20 @@ i.icon {
         height: auto;
     }
 
-    .full-screen .intro-overlay{
+    .full-screen .v-center , .full-screen .vh-center{
         position: unset;
         float: none;
         margin-left: auto;
         margin-right: auto;
         transform: unset;
         margin-top: 20px;
+    }
+
+    .full-screen .download-box{
+        display: block;
+        margin-right: auto;
+        margin-left: auto;
+        max-width: 80%;
+        height: auto;
     }
 }

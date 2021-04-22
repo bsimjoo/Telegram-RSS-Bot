@@ -47,17 +47,79 @@
         <a id="download-tar" href="https://github.com/bsimjoo/Telegram-RSS-Bot/releases/latest"
           target="_blank"><button><i class="fas fa-download"></i> Download .tar</button></a>
         <br>
-        <a href="#git-clone">git clone</a>&bull;<a target="_blank"
+        <a href="#-rocket-getting-started">git clone</a>&bull;<a target="_blank"
           href="https://github.com/bsimjoo/Telegram-RSS-Bot/releases">older versions</a>
       </div>
     </div>
     <div class="content">
-      <h3 id="git-clone">Git clone</h3>
+      <h2 id="-rocket-getting-started"><i class="fas fa-rocket"></i> Getting started</h2>
+      <p>Follow Telegram instructions to <a href="https://core.telegram.org/bots#3-how-do-i-create-a-bot">create a
+          new
+          bot user</a> and get your Bot-Token. keep your Bot-Token safe.</p>
+      <p>Then download latest release or use git clone.</p>
       <pre>
-    <code>
-      git clone clone https://github.com/bsimjoo/Telegram_RSS_bot.git --branch release
-    </code>
-  </pre>
+        <code class="lang-bash">
+git clone https://github.com/bsimjoo/Telegram_RSS_bot.git
+        </code>
+      </pre>
+      <p>Note: Telegram-RSS-Bot is always under active development, so if you&#39;re looking for a stable and safe
+        release, use the compressed packages or checkout to release branch.</p>
+      <p>use this:</p>
+      <pre>
+        <code class="lang-bash">
+git checkout release
+        </code>
+      </pre>
+      <p>OR just run this command instead of the one above:</p>
+      <pre>
+        <code class="lang-bash">
+git clone https://github.com/bsimjoo/Telegram_RSS_bot.git --branch release
+        </code>
+      </pre>
+      <hr>
+      <h4 id="update">Update</h4>
+      <p>Highly recommended to keep your server up to date. if you are using <code>git</code> you can do an update
+        with
+        <code>git pull</code>
+      </p>
+      <hr>
+      <h3 id="-arrow_down-installation"><i class="fas fa-box-open"></i> Installation</h3>
+      <p>First install python. I recommend Python v3.8+ because this project developed and tested with this
+        version. So
+        if you had any problem you can <a href="https://github.com/bsimjoo/Telegram-RSS-Bot/issues">create an
+          issue</a>
+      </p>
+      <p>change dir to source directory and install requirements with</p>
+      <pre>
+        <code class="lang-bash">
+cd Telegram-RSS-Bot
+python3 -m pip install {--user} -r requirements.txt
+        </code>
+      </pre>
+      <p><em><code>--user</code> flag is optional and may needed in some situation</em></p>
+      <h3 id="-gear-configuration"><i class="fas fa-cog"></i> Configuration</h3>
+      <p>Read <a
+          href="https://github.com/bsimjoo/Telegram-RSS-Bot/blob/main/docs/configuration-guide.md">docs/Configuration-guide.md</a>
+      </p>
+      <p>Copy default configuration example <a
+          href="https://github.com/bsimjoo/Telegram-RSS-Bot/blob/main/config-example.conf">config-example.conf</a> to
+        <code>user-config.conf</code> and add token to config file under <code>main</code> section
+      </p>
+      <pre>
+        <code class="lang-config">
+[main]
+token = {your bot token}
+        </code>
+      </pre>
+      <p><strong>Note</strong> that <code>config-example.conf</code> may be updated, so check for changes to each
+        update. <code>user-config.conf</code> is ignored by git to prevent git pull problems</p>
+      <h3 id="-running-run-server"><i class="fas fa-running"></i> Run server</h3>
+      <p>use <code>python main.py</code> to run server, you can also run server with a new config file with
+        <code>python main.py -c {config file path}</code> (Default configurations are
+        <code>user-config.conf</code> or
+        <code>config-example.conf</code>).
+        run <code>python main.py -h</code> to get help about available arguments.
+      </p>
     </div>
   </div>
   <script>
@@ -65,9 +127,9 @@
     xmlhttp.onreadystatechange = function () {
       if (this.readyState == 4 && this.status == 200) {
         var jres = JSON.parse(this.responseText);
-        document.getElementById('version').innerText = jres.name
         document.getElementById('download-zip').setAttribute('href', jres.zipball_url)
         document.getElementById('download-tar').setAttribute('href', jres.tarball_url)
+        document.getElementById('version').innerText = jres.name
       }
     };
     xmlhttp.open("GET", "https://api.github.com/repos/bsimjoo/Telegram-RSS-Bot/releases/latest", true);
