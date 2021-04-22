@@ -15,6 +15,7 @@ from configparser import ConfigParser
 from datetime import datetime, timedelta
 from threading import Timer
 from urllib.request import urlopen
+from urllib.error import HTTPError
 
 import lmdb
 from bs4 import BeautifulSoup
@@ -28,6 +29,50 @@ from telegram.ext import (BaseFilter, CallbackContext, CallbackQueryHandler,
                           CommandHandler, ConversationHandler, Filters,
                           MessageHandler, Updater)
 from telegram.utils.helpers import DEFAULT_NONE
+
+
+import time
+from functools import wraps
+
+
+def retry(ExceptionToCheck, tries=4, delay=3, backoff=2):
+    """Retry calling the decorated function using an exponential backoff.
+
+    http://www.saltycrane.com/blog/2009/11/trying-out-retry-decorator-python/
+    original from: http://wiki.python.org/moin/PythonDecoratorLibrary#Retry
+
+    :param ExceptionToCheck: the exception to check. may be a tuple of
+        exceptions to check
+    :type ExceptionToCheck: Exception or tuple
+    :param tries: number of times to try (not retry) before giving up
+    :type tries: int
+    :param delay: initial delay between retries in seconds
+    :type delay: int
+    :param backoff: backoff multiplier e.g. value of 2 will double the delay
+        each retry
+    :type backoff: int
+    :param logger: logger to use. If None, print
+    :type logger: logging.Logger instance
+    """
+    def deco_retry(f):
+
+        @wraps(f)
+        def f_retry(*args, **kwargs):
+            mtries, mdelay = tries, delay
+            while mtries > 1:
+                try:
+                    return f(*args, **kwargs)
+                except ExceptionToCheck, e:
+                    msg = "%s, Retrying in %d seconds..." % (str(e), mdelay)
+                    logging.warning(msg)
+                    time.sleep(mdelay)
+                    mtries -= 1
+                    mdelay *= backoff
+            return f(*args, **kwargs)
+
+        return f_retry  # true decorator
+
+    return deco_retry
 
 
 class BotHandler:
@@ -913,58 +958,62 @@ class BotHandler:
                 tag.attrs = dict()
         return soup
 
+    @retry(HTTPError,10):
+    def get_feed(self):
+        with urlopen(self.source) as f:
+            return f.read().decode('utf-8')
 
     def read_feed(self):
         feeds_xml = None
-        with urlopen(self.source) as f:
-            feeds_xml = f.read().decode('utf-8')
-        if feeds_xml:
-            soup_page = BeautifulSoup(feeds_xml, 'xml')
-            feeds_list = soup_page.findAll("item")
-            skip = re.compile(r'</?[^>]*name = "skip"[^>]*>').match               #This regex will search for a tag named as "skip" like: <any name = "skip">
-            for feed in feeds_list:
-                description = str(feed.description.text)
-                if not skip(description):     #if regex found something skip this post
-                    soup = self.purge(description)
-                    description = str(soup)
-                    messages = [{'type': 'text', 'text': description, 'markup': None}]
-                    #Handle images
-                    images = soup.find_all('img')
-                    first = True
-                    if images:
-                        for img in images:
-                            sep = str(img)
-                            have_link = img.parent.name == 'a'
-                            if have_link:
-                                sep = str(img.parent)
-                            first_part, description = description.split(sep, 1)
-                            if first:   #for first message
-                                if first_part != '':
-                                    messages[0] = {'type': 'text', 'text': first_part, 'markup': None}
-                                    msg = {'type': 'image',
-                                    'src': img['src'], 'markup': None}
-                                    if have_link:
-                                        msg['markup'] = [[InlineKeyboardButton('Open image link', img.parent['href'])]]
-                                    messages.append(msg)
-                                else:
-                                    msg = {'type': 'image', 'src': img['src'], 'markup': None}
-                                    if have_link:
-                                        msg['markup'] = [[InlineKeyboardButton('Open image link', img.parent['href'])]]
-                                    messages[0] = msg
-                                first = False
-                            else:
-                                messages[-1]['text'] = first_part
+        try:
+            feeds_xml = self.get_feed()
+        except:
+            return None, None
+        
+        soup_page = BeautifulSoup(feeds_xml, 'xml')
+        feeds_list = soup_page.findAll("item")
+        skip = re.compile(r'</?[^>]*name = "skip"[^>]*>').match               #This regex will search for a tag named as "skip" like: <any name = "skip">
+        for feed in feeds_list:
+            description = str(feed.description.text)
+            if not skip(description):     #if regex found something skip this post
+                soup = self.purge(description)
+                description = str(soup)
+                messages = [{'type': 'text', 'text': description, 'markup': None}]
+                #Handle images
+                images = soup.find_all('img')
+                first = True
+                if images:
+                    for img in images:
+                        sep = str(img)
+                        have_link = img.parent.name == 'a'
+                        if have_link:
+                            sep = str(img.parent)
+                        first_part, description = description.split(sep, 1)
+                        if first:   #for first message
+                            if first_part != '':
+                                messages[0] = {'type': 'text', 'text': first_part, 'markup': None}
                                 msg = {'type': 'image',
-                                    'src': img['src'], 'markup': None}
+                                'src': img['src'], 'markup': None}
                                 if have_link:
                                     msg['markup'] = [[InlineKeyboardButton('Open image link', img.parent['href'])]]
                                 messages.append(msg)
-                        #End for img
-                        messages[-1]['text'] = description
-                    #End if images
-                    return feed, messages
-        else:
-            return None
+                            else:
+                                msg = {'type': 'image', 'src': img['src'], 'markup': None}
+                                if have_link:
+                                    msg['markup'] = [[InlineKeyboardButton('Open image link', img.parent['href'])]]
+                                messages[0] = msg
+                            first = False
+                        else:
+                            messages[-1]['text'] = first_part
+                            msg = {'type': 'image',
+                                'src': img['src'], 'markup': None}
+                            if have_link:
+                                msg['markup'] = [[InlineKeyboardButton('Open image link', img.parent['href'])]]
+                            messages.append(msg)
+                    #End for img
+                    messages[-1]['text'] = description
+                #End if images
+                return feed, messages
 
     def send_feed(self, feed, messages, msg_header, chat_ids):
         #TODO:Un-handled users block
@@ -1007,9 +1056,6 @@ class BotHandler:
                 yield key.decode()
 
     def check_new_feed(self):
-        #TODO:Check thread does not work after network error
-        # `check_new_feed` thread had been stopped and didn't check for new feed after an exception risen by requests
-        # labels: bug
         feed, messages = self.read_feed()
         if feed:
             date = self.__get_data__('last-feed-date', DB = self.data_db)
