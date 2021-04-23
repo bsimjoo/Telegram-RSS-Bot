@@ -45,7 +45,8 @@ nav ul{
 
 .full-screen{
     position: relative;
-    min-height: 100vh;
+    height: 100vh;
+    min-height: 500px;
     min-width: 100%;
 }
 
@@ -184,6 +185,7 @@ i.icon {
         position: unset;
         text-align: center;
         min-height: unset;
+        height: auto;
         padding:20px 0;
     }
 

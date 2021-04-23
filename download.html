@@ -31,7 +31,7 @@
         <li><a class="logo" href="./">Telegram-RSS-Bot</a></li>
         <li><a href="https://github.com/bsimjoo/Telegram-RSS-Bot">Source</a></li>
         <li><a href="javascript:void(0)">Download</a></li>
-        <li><a href="donate">Donate</a></li>
+        <li><a href="donate.html">Donate</a></li>
       </ul>
     </nav>
     <div class="full-screen gradient">
@@ -129,11 +129,14 @@ token = {your bot token}
         var jres = JSON.parse(this.responseText);
         document.getElementById('download-zip').setAttribute('href', jres.zipball_url)
         document.getElementById('download-tar').setAttribute('href', jres.tarball_url)
-        document.getElementById('version').innerText = jres.name
+        fade(document.getElementById('version'), function(){
+          document.getElementById('version').innerText = jres.name
+          unfade(document.getElementById('version'))
+        })
       }
-    };
+    }
     xmlhttp.open("GET", "https://api.github.com/repos/bsimjoo/Telegram-RSS-Bot/releases/latest", true);
-    xmlhttp.send();
+    xmlhttp.send()
   </script>
 </body>
 

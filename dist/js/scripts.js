@@ -6,11 +6,12 @@
     } while (currentDate - date < milliseconds);
   }
 
-  function fade(element) {
+  function fade(element, callback) {
     var op = 1;  // initial opacity
     var timer = setInterval(function () {
-        if (op <= 0.1){
-            clearInterval(timer);
+        if (op <= 0.05){
+          clearInterval(timer);
+          callback()
         }
         element.style.opacity = op;
         op -= op * 0.1;
@@ -21,9 +22,9 @@
     var op = 0.1;  // initial opacity
     var timer = setInterval(function () {
         if (op >= 1){
-            clearInterval(timer);
+          clearInterval(timer);
         }
         element.style.opacity = op;
         op += op * 0.1;
-    }, 10);
+    }, 50);
 }
