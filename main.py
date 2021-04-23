@@ -182,7 +182,7 @@ class BotHandler:
                     f'user_data = {json.dumps(c.user_data, indent = 2, ensure_ascii = False)}\n'
                     f'chat_data = {json.dumps(c.chat_data, indent = 2, ensure_ascii = False)}'
                 )
-                logging.debug(message)
+                logging.info(message)
                 if self.debug:
                     try:
                         self.bot.send_message(self.ownerID,html.escape(message), parse_mode = ParseMode.HTML)
