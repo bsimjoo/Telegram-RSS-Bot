@@ -2,7 +2,7 @@
     "en-us":{
         "welcome": [
             "Hi, I'm open\\-source [telegram RSS bot](https://github.com/bsimjoo/Telegram_RSS_bot) ",
-            "wrote by [BSimjoo](https://github.com/bsimjoo) and this is a default message\\.\n",
+            "writen by [BSimjoo](https://github.com/bsimjoo) and this is a default message\\.\n",
             "*Owner can edit this message in strings\\.json file*"
         ],
         "group-intro": [
