@@ -1,28 +1,82 @@
+import argparse
+import html
 import json
-import lmdb
-import pickle
 import logging
-import sys
-import typing
-import string
+import os
+import pickle
 import random
 import re
-import os
+import string
+import sys
 import traceback
-import html
-import argparse
+import typing
+from collections import OrderedDict
 from configparser import ConfigParser
-from urllib.request import urlopen
-from bs4 import BeautifulSoup, Comment
-from telegram import *
-from telegram.error import BadRequest
-from telegram.utils.helpers import DEFAULT_NONE
-from telegram.bot import Bot
-from telegram.ext import *
-from telegram.error import NetworkError
-from dateutil.parser import parse
 from datetime import datetime, timedelta
 from threading import Timer
+from urllib.request import urlopen
+from urllib.error import HTTPError
+
+import lmdb
+from bs4 import BeautifulSoup
+from dateutil.parser import parse
+from telegram import (Chat, InlineKeyboardButton, InlineKeyboardMarkup,
+                      InputMediaPhoto, ParseMode, ReplyKeyboardMarkup,
+                      ReplyKeyboardRemove, Update, ChatMember)
+from telegram.bot import Bot
+from telegram.error import BadRequest, NetworkError, Unauthorized
+from telegram.ext import (BaseFilter, CallbackContext, CallbackQueryHandler,
+                          CommandHandler, ConversationHandler, Filters,
+                          MessageHandler, ChatMemberHandler, Updater)
+from telegram.utils.helpers import DEFAULT_NONE
+
+
+import time
+from functools import wraps
+
+
+def retry(ExceptionToCheck, tries=4, delay=3, backoff=2):
+    """Retry calling the decorated function using an exponential backoff.
+
+    http://www.saltycrane.com/blog/2009/11/trying-out-retry-decorator-python/
+    original from: http://wiki.python.org/moin/PythonDecoratorLibrary#Retry
+
+    :param ExceptionToCheck: the exception to check. may be a tuple of
+        exceptions to check
+    :type ExceptionToCheck: Exception or tuple
+    :param tries: number of times to try (not retry) before giving up
+    :type tries: int
+    :param delay: initial delay between retries in seconds
+    :type delay: int
+    :param backoff: backoff multiplier e.g. value of 2 will double the delay
+        each retry
+    :type backoff: int
+    :param logger: logger to use. If None, print
+    :type logger: logging.Logger instance
+    """
+    def deco_retry(f):
+
+        @wraps(f)
+        def f_retry(*args, **kwargs):
+            mtries, mdelay = tries, delay
+            while mtries > 1:
+                try:
+                    return f(*args, **kwargs)
+                except Exception as e:
+                    if isinstance(e,ExceptionToCheck):
+                        msg = "%s, Retrying in %d seconds..." % (str(e), mdelay)
+                        logging.warning(msg)
+                        time.sleep(mdelay)
+                        mtries -= 1
+                        mdelay *= backoff
+                    else:
+                        raise e
+            return f(*args, **kwargs)
+
+        return f_retry  # true decorator
+
+    return deco_retry
+
 
 class BotHandler:
 
@@ -35,24 +89,23 @@ class BotHandler:
 
     # --------------------[Decorators]--------------------
 
-    def message_handler(self, filter: BaseFilter):
+    def message_handler(self, filter_: BaseFilter):
         def decorator(func):
-            self.dispatcher.add_handler(MessageHandler(filter, func))
+            self.dispatcher.add_handler(MessageHandler(filter_, func), group=1)
             return func
         return decorator
 
-    def command(self, f = None, name = None):
+    def command(self, func = None, name = None):
         "add a command handler"
-        def decorator(func = f):
-            self.dispatcher.add_handler(CommandHandler(
-                (name if name else func.__name__), func))
+        def decorator(func = func):
+            self.dispatcher.add_handler(CommandHandler((name if name else func.__name__), func), group=1)
             return func
         if not name:
-            return(decorator(f))
+            return(decorator(func))
         return decorator
 
-    def adminCommand(self, f = None, skip_register = False):
-        def decorator(func = f):
+    def adminCommand(self, func = None, skip_register = False):
+        def decorator(func = func):
             def auth_and_run(u: Update, c: CallbackContext):
                 if u.effective_user.id in self.adminID:
                     return func(u, c)
@@ -60,15 +113,15 @@ class BotHandler:
                     return self.__unknown__(u, c)
             if not skip_register:
                 self.dispatcher.add_handler(
-                    CommandHandler(func.__name__, auth_and_run))
+                    CommandHandler(func.__name__, auth_and_run), group=1)
             return auth_and_run
 
         if skip_register:
             return decorator
         return decorator()
 
-    def ownerCommand(self, f = None, skip_register = False):
-        def decorator(func = f):
+    def ownerCommand(self, func = None, skip_register = False):
+        def decorator(func = func):
             def auth_and_run(u: Update, c: CallbackContext):
                 if u.effective_user.id == self.ownerID:
                     return func(u, c)
@@ -76,7 +129,7 @@ class BotHandler:
                     return self.__unknown__(u, c)
             if not skip_register:
                 self.dispatcher.add_handler(
-                    CommandHandler(func.__name__, auth_and_run))
+                    CommandHandler(func.__name__, auth_and_run), group=1)
             return auth_and_run
 
         if skip_register:
@@ -94,7 +147,8 @@ class BotHandler:
         chats_db,
         data_db,
         strings: dict,
-        bug_reporter = None):
+        bug_reporter = None,
+        debug = False):
         #----[USE SOCKES]----
         #import socks
         #s = socks.socksocket()
@@ -118,14 +172,39 @@ class BotHandler:
         self.interval = self.__get_data__('interval', 5*60, data_db)
         self.__check__ = True
         self.bug_reporter = bug_reporter if bug_reporter else None
+        self.debug = False
 
+        if debug:
+            def log_update(u: Update, c:CallbackContext):
+                message = (
+                    'Received a new update event from telegram\n'
+                    f'update = {json.dumps(u.to_dict(), indent = 2, ensure_ascii = False)}\n'
+                    f'user_data = {json.dumps(c.user_data, indent = 2, ensure_ascii = False)}\n'
+                    f'chat_data = {json.dumps(c.chat_data, indent = 2, ensure_ascii = False)}'
+                )
+                logging.info(message)
+                if self.debug:
+                    try:
+                        self.bot.send_message(self.ownerID,html.escape(message), parse_mode = ParseMode.HTML)
+                    except Exception as e:
+                        self.log_bug(e,'Exception while sending update log to owner',ownerID=self.ownerID, message=html.escape(message))
+            
+            self.dispatcher.add_handler(MessageHandler(Filters.update,log_update))
+
+            @self.ownerCommand
+            def log_updates(u:Update, c:CallbackContext):
+                self.debug = not self.debug
+                if self.debug:
+                    u.message.reply_text('Debug enabled. now bot sends all updates for you')
+                else:
+                    u.message.reply_text('Debug disabled.')
+
+        @self.message_handler(Filters.update.edited_message)
         def handle_edited_msg(u: Update, c:CallbackContext):
             #TODO: Handle editing messages
             # Handle messages editing in /send_all could be usefull
             # labels: enhancement
             u.edited_message.reply_text(self.strings['edited-message'])
-        
-        self.dispatcher.add_handler(MessageHandler(Filters.update.edited_message,handle_edited_msg))
 
         @self.command
         def start(update: Update, _: CallbackContext):
@@ -194,6 +273,7 @@ class BotHandler:
                 )
             else:
                 self.__unknown__(u, c)
+                
 
         # --------------[admin commands]-----------------
 
@@ -287,11 +367,11 @@ class BotHandler:
                 if c.user_data['time'] > datetime.now():
                     u.message.reply_text(self.get_string('time-limit-error'))
                     return
-            self.send_feed(*self.read_feed(),msg_header = self.get_string('last-feed'),chat_ids = [u.effective_chat.id])
+            self.send_feed(*self.read_feed(),msg_header = self.get_string('last-feed'),chats = [(u.effective_chat.id, c.chat_data)])
             c.user_data['time'] = datetime.now() + timedelta(minutes = 2)      #The next request is available 2 minutes later
 
-        @self.command
-        def help(u: Update, c: CallbackContext):
+        @self.command(name='help')
+        def _help(u: Update, c: CallbackContext):
             if u.effective_chat.id == self.ownerID:
                 u.message.reply_text(self.get_string('owner-help'))
             if u.effective_chat.id in self.adminID:
@@ -320,6 +400,7 @@ class BotHandler:
             text = u.message.text
             if c.user_data['parser'] == ParseMode.HTML:
                 text = str(self.purge(text,False))
+                    
             c.user_data['messages'].append(
                 {
                     'type':'text',
@@ -670,24 +751,40 @@ class BotHandler:
                             msg['had-error'] = True
                             return self.STATE_ADD
 
-            res = send_message(u.effective_chat.id)
-            if res:
-                u.effective_chat.send_message(
-                    '🛑 there is a problem with your messages, please fix them.',
-                    parse_mode = ParseMode.MARKDOWN_V2,
-                    reply_markup = add_keyboard(c)
-                )
-                return res
+                res = send_message(u.effective_chat.id)
+                if res:
+                    u.effective_chat.send_message(
+                        '🛑 there is a problem with your messages, please fix them.',
+                        parse_mode = ParseMode.MARKDOWN_V2,
+                        reply_markup = add_keyboard(c)
+                    )
+                    return res
 
-            for chat_id in self.iter_all_chats():
-                if chat_id != u.effective_chat.id:
-                    send_message(chat_id)
-            
-            cleanup_last_preview(u.effective_chat.id, c)
-            for key in ('messages', 'prev-dict', 'had-error', 'edit-cap', 'editing-prev-id'):
-                if key in c.user_data:
-                    del(c.user_data[key])
-            return ConversationHandler.END
+                remove_ids = []
+                for chat_id, chat_data in self.iter_all_chats():
+                    if chat_id != u.effective_chat.id:
+                        try:
+                            send_message(chat_id)
+                        except Unauthorized as e:
+                            self.log_bug(e,'handled an exception while trying to send message to a chat. removing chat', report=False, chat_id = chat_id, chat_data = chat_data)
+                            try:
+                                with self.env.begin(self.chats_db, write = True) as txn:
+                                    txn.delete(str(chat_id).encode())
+                            except Exception as e2:
+                                self.log_bug(e2,'exception while trying to remove chat')
+                                remove_ids.append(chat_id)
+                        except Exception as e:
+                            self.log_bug(e,'exception while trying to send message to a chat', chat_id = chat_id, chat_data = chat_data)
+                
+                for chat_id in remove_ids:
+                    with self.env.begin(self.chats_db, write = True) as txn:
+                        txn.delete(str(chat_id).encode())
+
+                cleanup_last_preview(u.effective_chat.id, c)
+                for key in ('messages', 'prev-dict', 'had-error', 'edit-cap', 'editing-prev-id'):
+                    if key in c.user_data:
+                        del(c.user_data[key])
+                return ConversationHandler.END
 
         def confirm_admin(u: Update, c: CallbackContext):
             query = u.callback_query
@@ -794,11 +891,11 @@ class BotHandler:
             ],
             per_user = True
         )
-        self.dispatcher.add_handler(send_all_conv_handler)
+        self.dispatcher.add_handler(send_all_conv_handler, group=1)
         self.dispatcher.add_handler(CallbackQueryHandler(
-            confirm_admin, pattern = 'accept-.*'))
+            confirm_admin, pattern = 'accept-.*'), group=1)
         self.dispatcher.add_handler(CallbackQueryHandler(
-            decline_admin, pattern = 'decline-.*'))
+            decline_admin, pattern = 'decline-.*'), group=1)
 
         def onjoin(u: Update, c: CallbackContext):
             for member in u.message.new_chat_members:
@@ -831,14 +928,23 @@ class BotHandler:
                     with self.env.begin(self.chats_db, write = True) as txn:
                         txn.delete(str(u.effective_chat.id).encode())
 
+        def onBotBlocked(u: Update, c:CallbackContext):
+            if (u.my_chat_member.new_chat_member.user.id == self.bot.id):
+                status = u.my_chat_member.new_chat_member.status
+                if status in (ChatMember.KICKED, ChatMember.LEFT, ChatMember.RESTRICTED):
+                    logging.info('Bot had been kicked or blocked by a user')
+                    with self.env.begin(self.chats_db, write = True) as txn:
+                        txn.delete(str(u.my_chat_member.chat.id).encode())
+
+
+        self.dispatcher.add_handler(ChatMemberHandler(onBotBlocked), group=1)
         self.dispatcher.add_handler(MessageHandler(
-            Filters.status_update.new_chat_members, onjoin))
+            Filters.status_update.new_chat_members, onjoin), group=1)
         self.dispatcher.add_handler(MessageHandler(
-            Filters.status_update.left_chat_member, onkick))
+            Filters.status_update.left_chat_member, onkick), group=1)
 
         @self.message_handler(Filters.command)
         def unknown(u: Update, c: CallbackContext):
-            logging.warning('Unknown handeled command: "'+u.message.text+'"')
             u.message.reply_text(self.get_string('unknown'))
 
         self.__unknown__ = unknown
@@ -850,52 +956,57 @@ class BotHandler:
 
         def error_handler(update: object, context: CallbackContext) -> None:
             """Log the error and send a telegram message to notify the developer."""
-            # Log the error before we do anything else, so we can see it even if something breaks.
-            logging.error(msg = "Exception while handling an update:",
-                         exc_info = context.error)
 
-            if isinstance(context.error, NetworkError):
-                return
-
-            # traceback.format_exception returns the usual python message about an exception, but as a
-            # list of strings rather than a single string, so we have to join them together.
-            tb_list = traceback.format_exception(
-                None, context.error, context.error.__traceback__)
-            tb_string = ''.join(tb_list)
-            tb = context.error.__traceback__
-            s = traceback.extract_tb(tb)
-            f = s[-1]
-            lineno = f.lineno
-            filename = os.path.basename(f.filename)
-            exception_type = type(context.error).__name__
-            if self.bug_reporter:
-                self.bug_reporter.bug(f'L{lineno}@{filename}: {exception_type}', tb_string, line=lineno, file=filename)
-
-            # Build the message with some markup and additional information about what happened.
-            # You might need to add some logic to deal with messages longer than the 4096 character limit.
-            update_str = update.to_dict() if isinstance(update, Update) else str(update)
-            message = (
-                f'An exception was raised while handling an update\n'
-                f'<pre>update = {html.escape(json.dumps(update_str, indent = 2, ensure_ascii = False))}'
-                '</pre>\n\n'
-                f'<pre>context.chat_data = {html.escape(str(context.chat_data))}</pre>\n\n'
-                f'<pre>context.user_data = {html.escape(str(context.user_data))}</pre>\n\n'
-                f'<pre>{html.escape(tb_string)}</pre>'
+            self.log_bug(
+                context.error,
+                'Exception while handling an update',
+                not isinstance(context.error, NetworkError),
+                update = update.to_dict() if isinstance(update, Update) else str(update),
+                user_data = context.user_data,
+                chat_data = context.chat_data
             )
-
-            # Finally, send the message
-            context.bot.send_message(
-                chat_id = self.ownerID, text = message, parse_mode = ParseMode.HTML)
 
         self.dispatcher.add_error_handler(error_handler)
 
     # ----------------------------------------------------
 
+    def log_bug(self, ex:Exception, msg='', report = True, disable_notification = False,**args):
+        tb = ex.__traceback__
+        tb_list = traceback.format_exception(None, ex, tb)
+        tb_string = ''.join(tb_list)
+        s = traceback.extract_tb(tb)
+        f = s[-1]
+        lineno = f.lineno
+        filename = os.path.basename(f.filename)
+        exception_type = type(ex).__name__
+
+        if self.bug_reporter and report:
+            self.bug_reporter.bug(f'L{lineno}@{filename}: {exception_type}', f'{msg}\n{tb_string}', line=lineno, file=filename)
+        
+        message = (
+            '<b>An exception was raised</b>\n'
+            f'L{lineno}@{filename}: {exception_type}\n'
+            f'{html.escape(msg)}\n'
+            f'<pre>{tb_string}</pre>'
+        )
+        if len(args):
+            message+='\n\nExtra info:'
+            msg+='\n\nExtra info'
+            for key, value in args.items():
+                message+=f'\n<pre>{key} = {html.escape(json.dumps(value, indent = 2, ensure_ascii = False))}</pre>'
+                msg+=f'\n{key} = {json.dumps(value, indent = 2, ensure_ascii = False)}'
+        
+        logging.exception(msg, exc_info=ex)
+        try:
+            self.bot.send_message(chat_id = self.ownerID, text = message, parse_mode = ParseMode.HTML, disable_notification = disable_notification)
+        except:
+            logging.exception('can not send message to owner')
+
     def purge(self, html_str:str, images=True):
         tags = self.SUPPORTED_HTML_TAGS
         if images:
             tags+='|img'
-        purger = purge = re.compile(r'</?(?!(?:%s)\b)\w+[^>]*/?>'%tags).sub      #This regex will purge any unsupported tag
+        purge = re.compile(r'</?(?!(?:%s)\b)\w+[^>]*/?>'%tags).sub      #This regex will purge any unsupported tag
         soup = BeautifulSoup(purge('', html_str), 'html.parser')
         for tag in soup.descendants:
             #Remove any unsupported attribute
@@ -907,16 +1018,24 @@ class BotHandler:
                 tag.attrs = dict()
         return soup
 
+    @retry(HTTPError,10)
+    def get_feed(self):
+        with urlopen(self.source) as f:
+            return f.read().decode('utf-8')
 
     def read_feed(self):
         feeds_xml = None
-        with urlopen(self.source) as f:
-            feeds_xml = f.read().decode('utf-8')
-        if feeds_xml:
-            soup_page = BeautifulSoup(feeds_xml, 'xml')
-            feeds_list = soup_page.findAll("item")
-            skip = re.compile(r'</?[^>]*name = "skip"[^>]*>').match               #This regex will search for a tag named as "skip" like: <any name = "skip">
-            for feed in feeds_list:
+        try:
+            feeds_xml = self.get_feed()
+        except Exception as e:
+            self.log_bug(e,'exception while trying to get last feed', False, True)
+            return None, None
+        
+        soup_page = BeautifulSoup(feeds_xml, 'xml')
+        feeds_list = soup_page.findAll("item")
+        skip = re.compile(r'</?[^>]*name = "skip"[^>]*>').match               #This regex will search for a tag named as "skip" like: <any name = "skip">
+        for feed in feeds_list:
+            try:
                 description = str(feed.description.text)
                 if not skip(description):     #if regex found something skip this post
                     soup = self.purge(description)
@@ -957,45 +1076,66 @@ class BotHandler:
                         messages[-1]['text'] = description
                     #End if images
                     return feed, messages
-        else:
-            return None
+            except Exception as e:
+                self.log_bug(e,'Exception while reading feed', feed = str(feed))
+                return None, None
 
-    def send_feed(self, feed, messages, msg_header, chat_ids):
+    def send_feed(self, feed, messages, msg_header, chats):
+        remove_ids = []
         if len(messages) != 0:
-            if messages[-1]['markup']:
-                messages[-1]['markup'].append(
-                    [InlineKeyboardButton('View post', str(feed.link.text))])
-            else:
-                messages[-1]['markup'] = [[InlineKeyboardButton('View post', str(feed.link.text))]]
-            
-            msg_header = '<i>%s</i>\n\n<b><a href = "%s">%s</a></b>\n' % (
-                msg_header, feed.link.text, feed.title.text)
-            messages[0]['text'] = msg_header+messages[0]['text']
-            for chat_id in chat_ids:
-                for msg in messages:
-                    if msg['type'] == 'text':
-                        self.bot.send_message(
-                            chat_id,
-                            msg['text'],
-                            parse_mode = ParseMode.HTML,
-                            reply_markup = InlineKeyboardMarkup(msg['markup']) if msg['markup'] else None
-                        )
-                    elif msg['type'] == 'image':
-                        if msg['text'] == '':
-                            msg['text'] = None
-                        self.bot.send_photo(
-                            chat_id,
-                            msg['src'],
-                            msg['text'],
-                            parse_mode = ParseMode.HTML,
-                            reply_markup = InlineKeyboardMarkup(msg['markup']) if msg['markup'] else None
-                        )
+            try:
+                if messages[-1]['markup']:
+                    messages[-1]['markup'].append(
+                        [InlineKeyboardButton('View post', str(feed.link.text))])
+                else:
+                    messages[-1]['markup'] = [[InlineKeyboardButton('View post', str(feed.link.text))]]
+                
+                msg_header = '<i>%s</i>\n\n<b><a href = "%s">%s</a></b>\n' % (
+                    msg_header, feed.link.text, feed.title.text)
+                messages[0]['text'] = msg_header+messages[0]['text']
+                for chat_id, chat_data in chats:
+                    for msg in messages:
+                        try:
+                            if msg['type'] == 'text':
+                                self.bot.send_message(
+                                    chat_id,
+                                    msg['text'],
+                                    parse_mode = ParseMode.HTML,
+                                    reply_markup = InlineKeyboardMarkup(msg['markup']) if msg['markup'] else None
+                                )
+                            elif msg['type'] == 'image':
+                                if msg['text'] == '':
+                                    msg['text'] = None
+                                self.bot.send_photo(
+                                    chat_id,
+                                    msg['src'],
+                                    msg['text'],
+                                    parse_mode = ParseMode.HTML,
+                                    reply_markup = InlineKeyboardMarkup(msg['markup']) if msg['markup'] else None
+                                )
+                        except Unauthorized as e:
+                            self.log_bug(e,'handled an exception while sending a feed to a user. removing chat', report=False, chat_id = chat_id, chat_data = chat_data)
+                            try:
+                                with self.env.begin(self.chats_db, write = True) as txn:
+                                    txn.delete(str(chat_id).encode())
+                            except Exception as e2:
+                                self.log_bug(e2,'exception while trying to remove chat')
+                                remove_ids.append(chat_id)
+                        except Exception as e:
+                            self.log_bug(e, 'Exception while sending a feed to a user', message = msg, chat_id = chat_id, chat_data = chat_data)
+                            break
+
+            except Exception as e:
+                self.log_bug(e,'Exception while trying to send feed', messages = messages)
+
+        for chat_id in remove_ids:
+            with self.env.begin(self.chats_db, write = True) as txn:
+                txn.delete(str(chat_id).encode())
 
     def iter_all_chats(self):
-        logging.info('sending last feed to users')
         with env.begin(self.chats_db) as txn:
             for key, value in txn.cursor():
-                yield key.decode()
+                yield key.decode(), pickle.loads(value)
 
     def check_new_feed(self):
         feed, messages = self.read_feed()
@@ -1133,7 +1273,7 @@ if __name__ == '__main__':
         
         if main_config.get('bug-reporter') == 'online':
             try:
-                import cherrypy #user can ignore installing this module just if doesn't need reporting on http
+                import cherrypy  # user can ignore installing this module just if doesn't need reporting on http
             
                 class root:
 
@@ -1211,11 +1351,13 @@ if __name__ == '__main__':
 
     token = main_config.get('token')
     if not token:
-            logging.error("No Token, exiting")
-            sys.exit()
+        logging.error("No Token, exiting")
+        sys.exit()
+
+    debug = main_config.getboolean('debug',fallback=False)
 
     bot_handler = BotHandler(token, main_config.get('source','https://pcworms.blog.ir/rss/'), env,
-                             chats_db, data_db, strings, bug_reporter)
+                             chats_db, data_db, strings, bug_reporter, debug)
     bot_handler.run()
     bot_handler.idle()
     if bug_reporter:
