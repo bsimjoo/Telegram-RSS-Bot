@@ -173,6 +173,15 @@ i.icon {
     color: #ed7d31;
 }
 
+#release-note{
+    display: none;
+    border: solid 2px white;
+    border-radius: 5rem;
+    padding: 20px;
+    margin-bottom: 20px;
+    background-image: radial-gradient(farthest-corner at 0px 0px, rgba(0, 81, 142, 0.2), rgba(50, 0, 62, 0.2) 78%, rgba(37, 1, 1, 0.2));
+}
+
 @media only screen and (max-width: 830px) {
     nav.fixed{
         position: unset;

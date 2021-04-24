@@ -22,6 +22,7 @@
   <script src="https://kit.fontawesome.com/5aa53ba1ac.js" crossorigin="anonymous"></script>
   <script type="text/javascript" src="dist/js/meshki.min.js"></script>
   <script type="text/javascript" src="dist/js/scripts.js"></script>
+  <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/showdown@1.9.1/dist/showdown.min.js"></script>
 </head>
 
 <body class="download">
@@ -43,15 +44,19 @@
         </a>
         <br>
         <a id="download-zip" href="https://github.com/bsimjoo/Telegram-RSS-Bot/releases/latest"
-          target="_blank"><button><i class="fas fa-download"></i> Download .zip</button></a>
+          target="_self" onclick="document.getElementById('release-note').scrollIntoView();"><button><i class="fas fa-download"></i> Download .zip</button></a>
         <a id="download-tar" href="https://github.com/bsimjoo/Telegram-RSS-Bot/releases/latest"
-          target="_blank"><button><i class="fas fa-download"></i> Download .tar</button></a>
+          target="_self" onclick="document.getElementById('release-note').scrollIntoView();"><button><i class="fas fa-download"></i> Download .tar</button></a>
         <br>
-        <a href="#-rocket-getting-started">git clone</a>&bull;<a target="_blank"
-          href="https://github.com/bsimjoo/Telegram-RSS-Bot/releases">older versions</a>
+        <a href="#-rocket-getting-started">getting started</a> &bull; <a href="#git-clone">git clone</a><br>
+        <a target="_blank" href="https://github.com/bsimjoo/Telegram-RSS-Bot/releases">older versions</a> &bull; <a href="#release-note">release note</a>
+        <a></a>
       </div>
     </div>
     <div class="content">
+      <div id="release-note">
+        <h1><i class="fas fa-circle"></i> Release note</h1>
+      </div>
       <h2 id="-rocket-getting-started"><i class="fas fa-rocket"></i> Getting started</h2>
       <p>Follow Telegram instructions to <a href="https://core.telegram.org/bots#3-how-do-i-create-a-bot">create a
           new
@@ -71,7 +76,7 @@ git checkout release
         </code>
       </pre>
       <p>OR just run this command instead of the one above:</p>
-      <pre>
+      <pre id="git-clone">
         <code class="lang-bash">
 git clone https://github.com/bsimjoo/Telegram_RSS_bot.git --branch release
         </code>
@@ -133,6 +138,10 @@ token = {your bot token}
         fade(document.getElementById('version'), function(){
           document.getElementById('version').innerText = jres.name
           unfade(document.getElementById('version'))
+          var converter = new showdown.Converter()
+          html = converter.makeHtml(jres.body)
+          document.getElementById('release-note').innerHTML += html
+          unfade(document.getElementById('release-note'))
         })
       }
     }
