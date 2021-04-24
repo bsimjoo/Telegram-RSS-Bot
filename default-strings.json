@@ -13,7 +13,9 @@
         "new-feed": "🆕♨️New post on weblog:",
         "last-feed": "Last post of weblog",
         "owner-help": [
-            "/gentoken Crate one-time token to add new admin\n"
+            "/gentoken Crate one-time token to add new admin\n",
+            "/log_updates toggle debug mode\n\n",
+            "`/log_updates` is available just if you set debug as true in server configuration."
         ],
         "admin-help": [
             "/my_level  Check you access level\n\n",
@@ -52,7 +54,9 @@
         "new-feed": "🆕♨️پست جدید بر روی وبلاگ:",
         "last-feed": "آخرین پست وبلاگ:",
         "owner-help": [
-            "/gentoken ساخت توکن برای افزودن ادمین\n"
+            "/gentoken ساخت توکن برای افزودن ادمین\n",
+            "/log_updates تغییر حالت وضعیت رفع اشکال\n\n",
+            "دستور `/log_updates` تنها زمانی فعال است که در تنظیمات سرور مقدار `debug` معادل `true` باشد"
         ],
         "admin-help": [
             "/my_level    آگاهی از سطح دسترسی\n\n",
