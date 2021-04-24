@@ -129,6 +129,7 @@ token = {your bot token}
         var jres = JSON.parse(this.responseText);
         document.getElementById('download-zip').setAttribute('href', jres.zipball_url)
         document.getElementById('download-tar').setAttribute('href', jres.tarball_url)
+        sleep(700)
         fade(document.getElementById('version'), function(){
           document.getElementById('version').innerText = jres.name
           unfade(document.getElementById('version'))

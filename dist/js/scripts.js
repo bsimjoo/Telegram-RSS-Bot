@@ -9,22 +9,22 @@
   function fade(element, callback) {
     var op = 1;  // initial opacity
     var timer = setInterval(function () {
-        if (op <= 0.05){
+        if (op <= 0){
           clearInterval(timer);
           callback()
         }
         element.style.opacity = op;
-        op -= op * 0.1;
+        op -= 0.1;
     }, 50);
   }
 
   function unfade(element) {
-    var op = 0.1;  // initial opacity
+    var op = 0;  // initial opacity
     var timer = setInterval(function () {
         if (op >= 1){
           clearInterval(timer);
         }
         element.style.opacity = op;
-        op += op * 0.1;
+        op += 0.1;
     }, 50);
 }
