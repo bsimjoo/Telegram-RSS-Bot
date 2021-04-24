@@ -22,12 +22,12 @@ from bs4 import BeautifulSoup
 from dateutil.parser import parse
 from telegram import (Chat, InlineKeyboardButton, InlineKeyboardMarkup,
                       InputMediaPhoto, ParseMode, ReplyKeyboardMarkup,
-                      ReplyKeyboardRemove, Update)
+                      ReplyKeyboardRemove, Update, ChatMember)
 from telegram.bot import Bot
-from telegram.error import BadRequest, NetworkError
+from telegram.error import BadRequest, NetworkError, Unauthorized
 from telegram.ext import (BaseFilter, CallbackContext, CallbackQueryHandler,
                           CommandHandler, ConversationHandler, Filters,
-                          MessageHandler, Handler, Updater)
+                          MessageHandler, ChatMemberHandler, Updater)
 from telegram.utils.helpers import DEFAULT_NONE
 
 
@@ -150,12 +150,12 @@ class BotHandler:
         bug_reporter = None,
         debug = False):
         #----[USE SOCKES]----
-        #import socks
-        #s = socks.socksocket()
-        #s.set_proxy(socks.SOCKS5, "localhost", 9090)
-        #self.updater = Updater(Token, request_kwargs = {'proxy_url': 'socks5h://127.0.0.1:9090/'})
+        import socks
+        s = socks.socksocket()
+        s.set_proxy(socks.SOCKS5, "localhost", 9090)
+        self.updater = Updater(Token, request_kwargs = {'proxy_url': 'socks5h://127.0.0.1:9090/'})
         #-----[NO PROXY]-----
-        self.updater = Updater(Token)
+        #self.updater = Updater(Token)
         #--------------------
         self.bot = self.updater.bot
         self.dispatcher = self.updater.dispatcher
@@ -751,27 +751,40 @@ class BotHandler:
                             msg['had-error'] = True
                             return self.STATE_ADD
 
-            res = send_message(u.effective_chat.id)
-            if res:
-                u.effective_chat.send_message(
-                    '🛑 there is a problem with your messages, please fix them.',
-                    parse_mode = ParseMode.MARKDOWN_V2,
-                    reply_markup = add_keyboard(c)
-                )
-                return res
+                res = send_message(u.effective_chat.id)
+                if res:
+                    u.effective_chat.send_message(
+                        '🛑 there is a problem with your messages, please fix them.',
+                        parse_mode = ParseMode.MARKDOWN_V2,
+                        reply_markup = add_keyboard(c)
+                    )
+                    return res
 
-            for chat_id, chat_data in self.iter_all_chats():
-                if chat_id != u.effective_chat.id:
-                    try:
-                        send_message(chat_id)
-                    except Exception as e:
-                        self.log_bug(e,'exception while trying to send message to a chat', chat_id = chat_id, chat_data = chat_data)
-            
-            cleanup_last_preview(u.effective_chat.id, c)
-            for key in ('messages', 'prev-dict', 'had-error', 'edit-cap', 'editing-prev-id'):
-                if key in c.user_data:
-                    del(c.user_data[key])
-            return ConversationHandler.END
+                remove_ids = []
+                for chat_id, chat_data in self.iter_all_chats():
+                    if chat_id != u.effective_chat.id:
+                        try:
+                            send_message(chat_id)
+                        except Unauthorized as e:
+                            self.log_bug(e,'handled an exception while trying to send message to a chat. removing chat', report=False, chat_id = chat_id, chat_data = chat_data)
+                            try:
+                                with self.env.begin(self.chats_db, write = True) as txn:
+                                    txn.delete(str(chat_id).encode())
+                            except Exception as e2:
+                                self.log_bug(e2,'exception while trying to remove chat')
+                                remove_ids.append(chat_id)
+                        except Exception as e:
+                            self.log_bug(e,'exception while trying to send message to a chat', chat_id = chat_id, chat_data = chat_data)
+                
+                for chat_id in remove_ids:
+                    with self.env.begin(self.chats_db, write = True) as txn:
+                        txn.delete(str(chat_id).encode())
+
+                cleanup_last_preview(u.effective_chat.id, c)
+                for key in ('messages', 'prev-dict', 'had-error', 'edit-cap', 'editing-prev-id'):
+                    if key in c.user_data:
+                        del(c.user_data[key])
+                return ConversationHandler.END
 
         def confirm_admin(u: Update, c: CallbackContext):
             query = u.callback_query
@@ -915,6 +928,16 @@ class BotHandler:
                     with self.env.begin(self.chats_db, write = True) as txn:
                         txn.delete(str(u.effective_chat.id).encode())
 
+        def onBotBlocked(u: Update, c:CallbackContext):
+            if (u.my_chat_member.new_chat_member.user.id == self.bot.id):
+                status = u.my_chat_member.new_chat_member.status
+                if status in (ChatMember.KICKED, ChatMember.LEFT, ChatMember.RESTRICTED):
+                    logging.info('Bot had been kicked or blocked by a user')
+                    with self.env.begin(self.chats_db, write = True) as txn:
+                        txn.delete(str(u.my_chat_member.chat.id).encode())
+
+
+        self.dispatcher.add_handler(ChatMemberHandler(onBotBlocked), group=1)
         self.dispatcher.add_handler(MessageHandler(
             Filters.status_update.new_chat_members, onjoin), group=1)
         self.dispatcher.add_handler(MessageHandler(
@@ -1058,9 +1081,7 @@ class BotHandler:
                 return None, None
 
     def send_feed(self, feed, messages, msg_header, chats):
-        #TODO:Un-handled users block
-        # it seems that a user had blocked bot and bot tried to send him message.
-        # labels: bug
+        remove_ids = []
         if len(messages) != 0:
             try:
                 if messages[-1]['markup']:
@@ -1092,11 +1113,24 @@ class BotHandler:
                                     parse_mode = ParseMode.HTML,
                                     reply_markup = InlineKeyboardMarkup(msg['markup']) if msg['markup'] else None
                                 )
+                        except Unauthorized as e:
+                            self.log_bug(e,'handled an exception while sending a feed to a user. removing chat', report=False, chat_id = chat_id, chat_data = chat_data)
+                            try:
+                                with self.env.begin(self.chats_db, write = True) as txn:
+                                    txn.delete(str(chat_id).encode())
+                            except Exception as e2:
+                                self.log_bug(e2,'exception while trying to remove chat')
+                                remove_ids.append(chat_id)
                         except Exception as e:
                             self.log_bug(e, 'Exception while sending a feed to a user', message = msg, chat_id = chat_id, chat_data = chat_data)
                             break
+
             except Exception as e:
                 self.log_bug(e,'Exception while trying to send feed', messages = messages)
+
+        for chat_id in remove_ids:
+            with self.env.begin(self.chats_db, write = True) as txn:
+                txn.delete(str(chat_id).encode())
 
     def iter_all_chats(self):
         with env.begin(self.chats_db) as txn:
