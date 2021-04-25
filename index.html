@@ -2,6 +2,16 @@
 <html>
 
 <head>
+  <!-- Google Tag Manager -->
+  <script>(function (w, d, s, l, i) {
+      w[l] = w[l] || []; w[l].push({
+        'gtm.start':
+          new Date().getTime(), event: 'gtm.js'
+      }); var f = d.getElementsByTagName(s)[0],
+        j = d.createElement(s), dl = l != 'dataLayer' ? '&l=' + l : ''; j.async = true; j.src =
+          'https://www.googletagmanager.com/gtm.js?id=' + i + dl; f.parentNode.insertBefore(j, f);
+    })(window, document, 'script', 'dataLayer', 'GTM-NBL2QWZ');</script>
+  <!-- End Google Tag Manager -->
   <title>Telegram-RSS-Bot</title>
   <meta charset="UTF-8">
   <!-- Make the page Mobile-Friendly -->
@@ -22,16 +32,19 @@
   <script type="text/javascript" src="dist/js/meshki.min.js"></script>
   <script type="text/javascript" src="dist/js/scripts.js"></script>
   <script type="text/javascript">
-    window.onload = function ()  {
-    let loading = document.getElementById("loading-screen");
-    this.sleep(2000);
-    loading.style.display = "none";
-  };
+    window.onload = function () {
+      let loading = document.getElementById("loading-screen");
+      this.sleep(2000);
+      loading.style.display = "none";
+    };
   </script>
 </head>
 
 <body>
-
+  <!-- Google Tag Manager (noscript) -->
+  <noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-NBL2QWZ" height="0" width="0"
+      style="display:none;visibility:hidden"></iframe></noscript>
+  <!-- End Google Tag Manager (noscript) -->
   <div class="loading-screen" id="loading-screen">
     <div class="vh-center">
       <div class="loader"></div>
