@@ -42,8 +42,8 @@ class BugReporter:
                     return
             
             self.bugs = data.get('bugs',dict())
-            self.build_state = data.get('build_state','passing')
             self.bugs_count = data.get('bugs_count',0)
+            self.build_state = 'failing' if self.bugs_count else 'passing'
         self.__update_data__()
         
 
