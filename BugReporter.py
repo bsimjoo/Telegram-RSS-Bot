@@ -89,6 +89,7 @@ class BugReporter:
         tag.update(more)
         self.bugs[tag_name] = tag
         self.bugs_count = len(self.bugs)
+        self.build_state = 'failing'
         self.__update_data__()
 
     def dump(self):
