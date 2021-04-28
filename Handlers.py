@@ -24,12 +24,20 @@ from decorators import (CommandHandlerDecorator, ConversationDecorator,
 from main import BotHandler
 
 
-def add_owner_commands(server: BotHandler):
+def add_owner_handlers(server: BotHandler):
+
+    def unknown_query(u: Update, c: CallbackContext):
+        query = u.callback_query
+        logging.debug('unknown query, query data:'+query.data)
+        query.answer("❌ ERROR\nUnknown answer", show_alert = True,)
+
+    def unknown_command(u: Update, c: CallbackContext):
+        u.message.reply_text(server.get_string('unknown'))
 
     dispatcher_decorators = DispatcherDecorators(server.dispatcher)
 
     @dispatcher_decorators.commandHandler
-    @auth(server.ownerID, server.unknown)
+    @auth(server.ownerID, unknown_command)
     def gentoken(u: Update, c: CallbackContext):
         admin_token = ''.join(
             [random.choice(string.ascii_letters+string.digits) for x in range(32)])
@@ -43,7 +51,46 @@ def add_owner_commands(server: BotHandler):
     # TODO:availability of removing admins feature
     # labels: enhancement
 
+    @dispatcher_decorators.addHandler
+    @HandlerDecorator(CallbackQueryHandler,pattern = 'accept-.*')
+    @auth(server.ownerID, unknown_query)
+    def confirm_admin(u: Update, c: CallbackContext):
+        query = u.callback_query
+        if u.effective_user.id == server.ownerID:
+            new_admin_id = int(query.data[7:])
+            server.bot.send_message(
+                new_admin_id,
+                f'✅ Accepted, From now on, I know you as my admin')
+            server.adminID.append(new_admin_id)
+            server.__set_data__('adminID', server.adminID, DB = server.data_db)
+            server.admin_token.remove(server.admins_pendding[new_admin_id])
+            del(server.admins_pendding[new_admin_id])
+            query.answer('✅ Accepted')
+            query.message.edit_text(query.message.text+'\n\n✅ Accepted')
+        else:
+            query.answer()
+
+    @dispatcher_decorators.addHandler
+    @HandlerDecorator(CallbackQueryHandler,pattern = 'decline-.*')
+    @auth(server.ownerID, unknown_query)
+    def decline_admin(u: Update, c: CallbackContext):
+        query = u.callback_query
+        if u.effective_user.id == server.ownerID:
+            new_admin_id = int(query.data[8:])
+            server.bot.send_message(
+                new_admin_id,
+                f"❌ Declined, Owner didn't accepted your request")
+            server.admin_token.remove(server.admins_pendding[new_admin_id])
+            del(server.admins_pendding[new_admin_id])
+            query.answer('❌ Declined')
+            query.message.edit_text(query.message.text+'\n\n❌ Declined')
+        else:
+            query.answer()
+
 def add_debuging_handlers(server: BotHandler):
+    def unknown_command(u: Update, c: CallbackContext):
+        u.message.reply_text(server.get_string('unknown'))
+
     dispatcher_decorators = DispatcherDecorators(server.dispatcher)
 
     @dispatcher_decorators.messageHandler(filters=Filters.update, group=0)
@@ -74,10 +121,14 @@ def add_debuging_handlers(server: BotHandler):
             u.message.reply_text('Debug disabled.')
 
 def add_admin_commands(server: BotHandler):
+    def unknown_msg(u: Update, c: CallbackContext):
+        u.message.reply_text(server.get_string('unknown-msg'))
+
+    def unknown_command(u: Update, c: CallbackContext):
+        u.message.reply_text(server.get_string('unknown'))
+
     dispatcher_decorators = DispatcherDecorators(server.dispatcher)
-    # TODO:Add unknown function to server
-    # this function mist return `ConversatinHandler.END`
-    admin_auth = auth(server.adminID, server.unknown)
+    admin_auth = auth(server.adminID, unknown_command)
 
     @dispatcher_decorators.commandHandler
     @admin_auth
@@ -181,20 +232,22 @@ def add_admin_commands(server: BotHandler):
     @MessageHandlerDecorator(Filters.regex("^✅Send$"))
     def confirm(u: Update, c: CallbackContext):
         c.user_data['last-message'].delete()
-        c.user_data['last-message'] = server.bot.send_message(u.effective_chat.id,
-                                                              'Are you sure, you want to send message' +
-                                                              ('s' if len(c.user_data['messages']) > 1 else '') +
-                                                              'to all users, groups and channels?',
-                                                              reply_markup=InlineKeyboardMarkup(
-                                                                  [
-                                                                      [
-                                                                          InlineKeyboardButton(
-                                                                              "👍Yes, that's OK!", callback_data='yes'),
-                                                                          InlineKeyboardButton(
-                                                                              "✋No, stop!", callback_data='no')
-                                                                      ]
-                                                                  ]
-                                                              ))
+        c.user_data['last-message'] = server.bot.send_message(
+            u.effective_chat.id,
+            'Are you sure, you want to send message' +
+            ('s' if len(c.user_data['messages']) > 1 else '') +
+            'to all users, groups and channels?',
+            reply_markup=InlineKeyboardMarkup(
+                [
+                    [
+                        InlineKeyboardButton(
+                            "👍Yes, that's OK!", callback_data='yes'),
+                        InlineKeyboardButton(
+                            "✋No, stop!", callback_data='no')
+                    ]
+                ]
+            )
+        )
         return STATE_CONFIRM
 
     text_markup = InlineKeyboardMarkup([
@@ -669,6 +722,12 @@ def add_admin_commands(server: BotHandler):
     server.dispatcher.add_handler(sendall_conv_handler.get_handler())
 
 def add_users_commands(server: BotHandler):
+    def unknown_msg(u: Update, c: CallbackContext):
+        u.message.reply_text(server.get_string('unknown-msg'))
+
+    def unknown_command(u: Update, c: CallbackContext):
+        u.message.reply_text(server.get_string('unknown'))
+
     dispatcher_decorators = DispatcherDecorators(server.dispatcher)
 
     @dispatcher_decorators.commandHandler
@@ -747,4 +806,7 @@ def add_users_commands(server: BotHandler):
         #TODO: Handle editing messages
         # Handle messages editing in /send_all could be usefull
         # labels: enhancement
-        u.edited_message.reply_text(self.strings['edited-message'])
+        u.edited_message.reply_text(server.strings['edited-message'])
+
+    dispatcher_decorators.addHandler(MessageHandler(Filters.command, unknown_command))
+    dispatcher_decorators.addHandler(MessageHandler(Filters.all, unknown_msg))

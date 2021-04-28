@@ -110,13 +110,13 @@ class BotHandler:
         self.env = env
         self.chats_db = chats_db
         self.data_db = data_db
-        self.adminID = self.__get_data__('adminID', [], DB = data_db)
-        self.ownerID = self.__get_data__('ownerID', DB = data_db)
+        self.adminID = self.get_data('adminID', [], DB = data_db)
+        self.ownerID = self.get_data('ownerID', DB = data_db)
         self.admins_pendding = {}
         self.admin_token = []
         self.strings = strings
         self.source = source
-        self.interval = self.__get_data__('interval', 5*60, data_db)
+        self.interval = self.get_data('interval', 5*60, data_db)
         self.__check__ = True
         self.bug_reporter = bug_reporter if bug_reporter else None
         self.debug = False
@@ -124,141 +124,6 @@ class BotHandler:
         if debug:
             #TODO:Add debuging handlers
             pass
-
-        # ----------[Conversation handlers]-------------
-
-        
-
-        def delete(u: Update, c: CallbackContext):
-            query = u.callback_query
-            query.answer('✅ Deleted')
-            preview_msg_id = query.message.message_id
-            msg = c.user_data['prev-dict'][preview_msg_id]
-            c.user_data['messages'].remove(msg)
-            del(c.user_data['prev-dict'][preview_msg_id])
-            query.edit_message_text('❌')
-            c.user_data['last-message'].delete()
-            c.user_data['last-message'] = self.bot.send_message(
-                u.effective_chat.id, 'OK, now you can send message to add', reply_markup = add_keyboard(c))
-            return self.STATE_ADD
-
-        def deleting(u: Update, c: CallbackContext):
-            query = u.callback_query
-            query.answer()
-            query.edit_message_reply_markup(
-                InlineKeyboardMarkup([
-                    [InlineKeyboardButton(
-                        '🛑 Are you sure?', callback_data = 'None')],
-                    [InlineKeyboardButton('🔴 Yes', callback_data = 'yes'), InlineKeyboardButton(
-                        '🟢 No', callback_data = 'no')]
-                ])
-            )
-            c.user_data['last-message'].delete()
-            c.user_data['last-message'] = self.bot.send_message(
-                u.effective_chat.id, '⏳ Deleting a message...', reply_markup = ReplyKeyboardRemove())
-            return self.STATE_DELETE
-
-        def confirm(u: Update, c: CallbackContext):
-            c.user_data['last-message'].delete()
-            c.user_data['last-message'] = self.bot.send_message(u.effective_chat.id,
-                'Are you sure, you want to send message' +
-                ('s' if len(c.user_data['messages']) > 1 else '') +
-                'to all users, groups and channels?',
-                reply_markup = InlineKeyboardMarkup(
-                    [
-                        [
-                            InlineKeyboardButton("👍Yes, that's OK!", callback_data = 'yes'),
-                            InlineKeyboardButton("✋No, stop!", callback_data = 'no')
-                        ]
-                    ]
-                ))
-            return self.STATE_CONFIRM
-
-        def send(u: Update, c: CallbackContext):
-            query = u.callback_query
-            if c.user_data.get('had-error'):
-                query.answer()
-                u.effective_chat.send_message(
-                    '🛑 there is a problem with your messages, please fix them.',
-                    parse_mode = ParseMode.MARKDOWN_V2,
-                    reply_markup = add_keyboard(c)
-                )
-                return self.STATE_ADD
-            query.answer(
-                '✅ Done\nSending message to all users, groups and channels', show_alert = True)
-            logging.info('Sending message to chats')
-            c.user_data['last-message'].delete()
-            c.user_data['last-message'] = self.bot.send_message(u.effective_chat.id,
-            '✅ Done\nSending message to all users, groups and channels')
-
-            def send_message(chat_id):
-                chat = c.bot.get_chat(chat_id)
-                for msg in c.user_data['messages']:
-                    #send message to admin for a debug!
-                    if msg['type'] == 'text':
-                        try:
-                            chat.send_message(
-                                msg['text'],
-                                parse_mode = msg['parser']
-                            ).message_id
-                        except BadRequest as ex:
-                            chat.send_message(
-                                msg['text']+'\n\n⚠️ CAN NOT PARSE.\n'+ex.message,
-                                reply_markup = text_markup
-                            )
-                            c.user_data['had-error'] = True
-                            msg['had-error'] = True
-                            return self.STATE_ADD
-                    elif msg['type'] == 'photo':
-                        try:
-                            chat.send_photo(
-                                msg['photo'],
-                                msg['caption'],
-                                parse_mode = msg['parser']
-                            ).message_id
-                        except BadRequest as ex:
-                            chat.send_photo(
-                                msg['photo'],
-                                caption = msg['caption']+'\n\n⚠️ CAN NOT PARSE.\n'+ex.message
-                            ).message_id
-                            c.user_data['had-error'] = True
-                            msg['had-error'] = True
-                            return self.STATE_ADD
-
-                res = send_message(u.effective_chat.id)
-                if res:
-                    u.effective_chat.send_message(
-                        '🛑 there is a problem with your messages, please fix them.',
-                        parse_mode = ParseMode.MARKDOWN_V2,
-                        reply_markup = add_keyboard(c)
-                    )
-                    return res
-
-                remove_ids = []
-                for chat_id, chat_data in self.iter_all_chats():
-                    if chat_id != u.effective_chat.id:
-                        try:
-                            send_message(chat_id)
-                        except Unauthorized as e:
-                            self.log_bug(e,'handled an exception while trying to send message to a chat. removing chat', report=False, chat_id = chat_id, chat_data = chat_data)
-                            try:
-                                with self.env.begin(self.chats_db, write = True) as txn:
-                                    txn.delete(str(chat_id).encode())
-                            except Exception as e2:
-                                self.log_bug(e2,'exception while trying to remove chat')
-                                remove_ids.append(chat_id)
-                        except Exception as e:
-                            self.log_bug(e,'exception while trying to send message to a chat', chat_id = chat_id, chat_data = chat_data)
-                
-                for chat_id in remove_ids:
-                    with self.env.begin(self.chats_db, write = True) as txn:
-                        txn.delete(str(chat_id).encode())
-
-                cleanup_last_preview(u.effective_chat.id, c)
-                for key in ('messages', 'prev-dict', 'had-error', 'edit-cap', 'editing-prev-id'):
-                    if key in c.user_data:
-                        del(c.user_data[key])
-                return ConversationHandler.END
 
         def confirm_admin(u: Update, c: CallbackContext):
             query = u.callback_query
@@ -268,7 +133,7 @@ class BotHandler:
                     new_admin_id,
                     f'✅ Accepted, From now on, I know you as my admin')
                 self.adminID.append(new_admin_id)
-                self.__set_data__('adminID', self.adminID, DB = data_db)
+                self.set_data('adminID', self.adminID, DB = data_db)
                 self.admin_token.remove(self.admins_pendding[new_admin_id])
                 del(self.admins_pendding[new_admin_id])
                 query.answer('✅ Accepted')
@@ -295,40 +160,6 @@ class BotHandler:
             logging.warning('unknown query, query data:'+query.data)
             query.answer("❌ ERROR\nUnknown answer", show_alert = True,)
 
-        send_all_conv_handler = ConversationHandler(
-            entry_points = [CommandHandler('sendall', sendall)],
-            states = {
-                self.STATE_ADD: [
-                    MessageHandler(Filters.regex("^✅Send$"), confirm),
-                    MessageHandler(Filters.regex("^👁Preview$"), preview),
-                    MessageHandler(Filters.regex("^❌Cancel$"), cancel(self.STATE_ADD)),
-                    MessageHandler(Filters.regex("^✅ HTML Enabled$")|Filters.regex("^◻️ HTML Disabled$"), toggle_markdown),
-                    MessageHandler(Filters.text, add_text),
-                    MessageHandler(Filters.photo, add_photo)
-                ],
-                self.STATE_EDIT: [
-                    MessageHandler(Filters.regex("^❌Cancel$"), cancel(self.STATE_EDIT)),
-                    MessageHandler(Filters.regex("^✅ HTML Enabled$")|Filters.regex("^◻️ HTML Disabled$"), toggle_markdown),
-                    MessageHandler(Filters.text, text_edited),
-                    MessageHandler(Filters.photo, photo_edited)
-                ],
-                self.STATE_DELETE: [
-                    CallbackQueryHandler(cancel(self.STATE_DELETE), pattern = '^no$'),
-                    CallbackQueryHandler(delete, pattern = '^yes$'),
-                ],
-                self.STATE_CONFIRM: [
-                    CallbackQueryHandler(send, pattern = '^yes$'),
-                    CallbackQueryHandler(cancel(self.STATE_CONFIRM), pattern = '^no$')
-                ]
-            },
-            fallbacks = [
-                CallbackQueryHandler(edit, pattern = '^edit(-cap)?$'),
-                CallbackQueryHandler(deleting, pattern = '^delete$'),
-                CallbackQueryHandler(unknown_query, pattern = '.*')
-            ],
-            per_user = True
-        )
-        self.dispatcher.add_handler(send_all_conv_handler, group=1)
         self.dispatcher.add_handler(CallbackQueryHandler(
             confirm_admin, pattern = 'accept-.*'), group=1)
         self.dispatcher.add_handler(CallbackQueryHandler(
@@ -339,7 +170,7 @@ class BotHandler:
                 if member.username == self.bot.username:
                     data = u.effective_chat.to_dict()
                     data['members-count'] = u.effective_chat.get_members_count()-1
-                    self.__set_data__(key = str(u.effective_chat.id), value = data)
+                    self.set_data(key = str(u.effective_chat.id), value = data)
                     self.bot.send_message(
                         self.ownerID,
                         '<i>Joined to a chat:</i>\n' +
@@ -353,7 +184,7 @@ class BotHandler:
 
         def onkick(u: Update, c: CallbackContext):
             if u.message.left_chat_member['username'] == self.bot.username:
-                data = self.__get_data__(str(u.effective_chat.id))
+                data = self.get_data(str(u.effective_chat.id))
                 if data:
                     self.bot.send_message(
                         self.ownerID,
@@ -379,17 +210,6 @@ class BotHandler:
             Filters.status_update.new_chat_members, onjoin), group=1)
         self.dispatcher.add_handler(MessageHandler(
             Filters.status_update.left_chat_member, onkick), group=1)
-
-        @self.message_handler(Filters.command)
-        def unknown(u: Update, c: CallbackContext):
-            u.message.reply_text(self.get_string('unknown'))
-
-        self.__unknown__ = unknown
-
-        # unknown commands and messages handler (register as last handler)
-        @self.message_handler(Filters.all)
-        def unknown_msg(u: Update, c: CallbackContext):
-            u.message.reply_text(self.get_string('unknown-msg'))
 
         def error_handler(update: object, context: CallbackContext) -> None:
             """Log the error and send a telegram message to notify the developer."""
@@ -568,16 +388,16 @@ class BotHandler:
     def check_new_feed(self):
         feed, messages = self.read_feed()
         if feed:
-            date = self.__get_data__('last-feed-date', DB = self.data_db)
+            date = self.get_data('last-feed-date', DB = self.data_db)
             if date:
                 feed_date = parse(feed.pubDate.text)
                 if feed_date > date:
-                    self.__set_data__('last-feed-date',
+                    self.set_data('last-feed-date',
                                       feed_date, DB = self.data_db)
                     self.send_feed(feed, messages, self.get_string('new-feed'), self.iter_all_chats())
             else:
                 feed_date = parse(feed.pubDate.text)
-                self.__set_data__('last-feed-date',
+                self.set_data('last-feed-date',
                                   feed_date, DB = self.data_db)
                 self.send_feed(feed, messages, self.get_string('new-feed'), self.iter_all_chats())
         if self.__check__:
