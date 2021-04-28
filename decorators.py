@@ -106,6 +106,14 @@ class DispatcherDecorators:
         else:
             return decorator_handler
 
+    def errorHandler(self, func):
+        logging.debug(f'add error handler => {func}')
+        try:
+            self.dispatcher.add_error_handler(func)
+        except:
+            logging.exception('exception while trying to add the error handler')
+            BugReporter.exception('exception while trying to the error handler')
+
 class ConversationDecorator:
     def __init__(self, entry_points:List[Handler], **kwargs):
         self.entry_points = entry_points
