@@ -11,6 +11,7 @@ import sys
 import traceback
 import typing
 import BugReporter
+import Handlers
 from collections import OrderedDict
 from configparser import ConfigParser
 from datetime import datetime, timedelta
@@ -122,110 +123,12 @@ class BotHandler:
         self.debug = False
 
         if debug:
-            #TODO:Add debuging handlers
-            pass
+            Handlers.add_debuging_handlers(self)
 
-        def confirm_admin(u: Update, c: CallbackContext):
-            query = u.callback_query
-            if u.effective_user.id == self.ownerID:
-                new_admin_id = int(query.data[7:])
-                self.bot.send_message(
-                    new_admin_id,
-                    f'✅ Accepted, From now on, I know you as my admin')
-                self.adminID.append(new_admin_id)
-                self.set_data('adminID', self.adminID, DB = data_db)
-                self.admin_token.remove(self.admins_pendding[new_admin_id])
-                del(self.admins_pendding[new_admin_id])
-                query.answer('✅ Accepted')
-                query.message.edit_text(query.message.text+'\n\n✅ Accepted')
-            else:
-                query.answer()
-
-        def decline_admin(u: Update, c: CallbackContext):
-            query = u.callback_query
-            if u.effective_user.id == self.ownerID:
-                new_admin_id = int(query.data[8:])
-                self.bot.send_message(
-                    new_admin_id,
-                    f"❌ Declined, Owner didn't accepted your request")
-                self.admin_token.remove(self.admins_pendding[new_admin_id])
-                del(self.admins_pendding[new_admin_id])
-                query.answer('❌ Declined')
-                query.message.edit_text(query.message.text+'\n\n❌ Declined')
-            else:
-                query.answer()
-
-        def unknown_query(u: Update, c: CallbackContext):
-            query = u.callback_query
-            logging.warning('unknown query, query data:'+query.data)
-            query.answer("❌ ERROR\nUnknown answer", show_alert = True,)
-
-        self.dispatcher.add_handler(CallbackQueryHandler(
-            confirm_admin, pattern = 'accept-.*'), group=1)
-        self.dispatcher.add_handler(CallbackQueryHandler(
-            decline_admin, pattern = 'decline-.*'), group=1)
-
-        def onjoin(u: Update, c: CallbackContext):
-            for member in u.message.new_chat_members:
-                if member.username == self.bot.username:
-                    data = u.effective_chat.to_dict()
-                    data['members-count'] = u.effective_chat.get_members_count()-1
-                    self.set_data(key = str(u.effective_chat.id), value = data)
-                    self.bot.send_message(
-                        self.ownerID,
-                        '<i>Joined to a chat:</i>\n' +
-                            html.escape(json.dumps(
-                                data, indent = 2, ensure_ascii = False)),
-                        ParseMode.HTML,
-                        disable_notification = True)
-                    if u.effective_chat.type != Chat.CHANNEL:
-                        u.message.reply_markdown_v2(
-                            self.get_string('group-intro'))
-
-        def onkick(u: Update, c: CallbackContext):
-            if u.message.left_chat_member['username'] == self.bot.username:
-                data = self.get_data(str(u.effective_chat.id))
-                if data:
-                    self.bot.send_message(
-                        self.ownerID,
-                        '<i>Kicked from a chat:</i>\n' +
-                            html.escape(json.dumps(
-                                data, indent = 2, ensure_ascii = False)),
-                        ParseMode.HTML,
-                        disable_notification = True)
-                    with self.env.begin(self.chats_db, write = True) as txn:
-                        txn.delete(str(u.effective_chat.id).encode())
-
-        def onBotBlocked(u: Update, c:CallbackContext):
-            if (u.my_chat_member.new_chat_member.user.id == self.bot.id):
-                status = u.my_chat_member.new_chat_member.status
-                if status in (ChatMember.KICKED, ChatMember.LEFT, ChatMember.RESTRICTED):
-                    logging.info('Bot had been kicked or blocked by a user')
-                    with self.env.begin(self.chats_db, write = True) as txn:
-                        txn.delete(str(u.my_chat_member.chat.id).encode())
-
-
-        self.dispatcher.add_handler(ChatMemberHandler(onBotBlocked), group=1)
-        self.dispatcher.add_handler(MessageHandler(
-            Filters.status_update.new_chat_members, onjoin), group=1)
-        self.dispatcher.add_handler(MessageHandler(
-            Filters.status_update.left_chat_member, onkick), group=1)
-
-        def error_handler(update: object, context: CallbackContext) -> None:
-            """Log the error and send a telegram message to notify the developer."""
-
-            self.log_bug(
-                context.error,
-                'Exception while handling an update',
-                not isinstance(context.error, NetworkError),
-                update = update.to_dict() if isinstance(update, Update) else str(update),
-                user_data = context.user_data,
-                chat_data = context.chat_data
-            )
-
-        self.dispatcher.add_error_handler(error_handler)
-
-    # ----------------------------------------------------
+        Handlers.add_users_handlers(self)
+        Handlers.add_admin_handlers(self)
+        Handlers.add_owner_handlers(self)
+        Handlers.add_other_handlers(self)
 
     def log_bug(self, exc:Exception, msg='', report = True, disable_notification = False,**args):
         info = BugReporter.exception(msg, exc, report = self.bug_reporter and report)

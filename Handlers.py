@@ -120,7 +120,7 @@ def add_debuging_handlers(server: BotHandler):
         else:
             u.message.reply_text('Debug disabled.')
 
-def add_admin_commands(server: BotHandler):
+def add_admin_handlers(server: BotHandler):
     def unknown_msg(u: Update, c: CallbackContext):
         u.message.reply_text(server.get_string('unknown-msg'))
 
@@ -721,7 +721,7 @@ def add_admin_commands(server: BotHandler):
 
     server.dispatcher.add_handler(sendall_conv_handler.get_handler())
 
-def add_users_commands(server: BotHandler):
+def add_users_handlers(server: BotHandler):
     def unknown_msg(u: Update, c: CallbackContext):
         u.message.reply_text(server.get_string('unknown-msg'))
 
@@ -810,3 +810,62 @@ def add_users_commands(server: BotHandler):
 
     dispatcher_decorators.addHandler(MessageHandler(Filters.command, unknown_command))
     dispatcher_decorators.addHandler(MessageHandler(Filters.all, unknown_msg))
+
+def add_other_handlers(server: BotHandler):
+    dispatcher_decorators = DispatcherDecorators(server.dispatcher)
+
+    @dispatcher_decorators.addHandler
+    @HandlerDecorator(ChatMemberHandler)
+    def onBotBlocked(u: Update, c:CallbackContext):
+        if (u.my_chat_member.new_chat_member.user.id == server.bot.id):
+            status = u.my_chat_member.new_chat_member.status
+            if status in (ChatMember.KICKED, ChatMember.LEFT, ChatMember.RESTRICTED):
+                logging.info('Bot had been kicked or blocked by a user')
+                with server.env.begin(server.chats_db, write = True) as txn:
+                    txn.delete(str(u.my_chat_member.chat.id).encode())
+
+    @dispatcher_decorators.messageHandler(Filters.status_update.new_chat_members)
+    def onjoin(u: Update, c: CallbackContext):
+        for member in u.message.new_chat_members:
+            if member.username == server.bot.username:
+                data = u.effective_chat.to_dict()
+                data['members-count'] = u.effective_chat.get_members_count()-1
+                server.set_data(key = str(u.effective_chat.id), value = data)
+                server.bot.send_message(
+                    server.ownerID,
+                    '<i>Joined to a chat:</i>\n' +
+                        html.escape(json.dumps(
+                            data, indent = 2, ensure_ascii = False)),
+                    ParseMode.HTML,
+                    disable_notification = True)
+                if u.effective_chat.type != Chat.CHANNEL:
+                    u.message.reply_markdown_v2(
+                        server.get_string('group-intro'))
+
+    @dispatcher_decorators.messageHandler(Filters.status_update.left_chat_member)
+    def onkick(u: Update, c: CallbackContext):
+        if u.message.left_chat_member['username'] == server.bot.username:
+            data = server.get_data(str(u.effective_chat.id))
+            if data:
+                server.bot.send_message(
+                    server.ownerID,
+                    '<i>Kicked from a chat:</i>\n' +
+                        html.escape(json.dumps(
+                            data, indent = 2, ensure_ascii = False)),
+                    ParseMode.HTML,
+                    disable_notification = True)
+                with server.env.begin(server.chats_db, write = True) as txn:
+                    txn.delete(str(u.effective_chat.id).encode())
+
+    @dispatcher_decorators.errorHandler
+    def error_handler(update: object, context: CallbackContext) -> None:
+        """Log the error and send a telegram message to notify the developer."""
+
+        server.log_bug(
+            context.error,
+            'Exception while handling an update',
+            not isinstance(context.error, NetworkError),
+            update = update.to_dict() if isinstance(update, Update) else str(update),
+            user_data = context.user_data,
+            chat_data = context.chat_data
+        )
