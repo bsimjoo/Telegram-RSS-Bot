@@ -96,15 +96,10 @@ class BotHandler:
         data_db,
         strings: dict,
         bug_reporter = False,
-        debug = False):
-        #----[USE SOCKES]----
-        #import socks
-        #s = socks.socksocket()
-        #s.set_proxy(socks.SOCKS5, "localhost", 9090)
-        #self.updater = Updater(Token, request_kwargs = {'proxy_url': 'socks5h://127.0.0.1:9090/'})
-        #-----[NO PROXY]-----
-        self.updater = Updater(Token)
-        #--------------------
+        debug = False,
+        request_kwargs=None):
+        
+        self.updater = Updater(Token, request_kwargs=request_kwargs)
         self.bot = self.updater.bot
         self.dispatcher = self.updater.dispatcher
         self.token = Token
@@ -448,8 +443,20 @@ if __name__ == '__main__':
 
     debug = main_config.getboolean('debug',fallback=False)
 
+    use_proxy = main_config.getboolean('use-proxy', fallback=False)
+    proxy_info = None
+    if use_proxy:
+        proxy_info={
+            'proxy_url': main_config.get('proxy-url','socks5h://127.0.0.1:9090')
+        }
+        if 'proxy-user' in main_config:
+            proxy_info['urllib3_proxy_kwargs'] = {
+                'username': main_config.get('proxy-user'),
+                'password': main_config.get('proxy-pass')
+            }
+
     bot_handler = BotHandler(token, main_config.get('source','https://pcworms.blog.ir/rss/'), env,
-                             chats_db, data_db, strings, not bug_reporter_mode == 'off', debug)
+                             chats_db, data_db, strings, not bug_reporter_mode == 'off', debug, proxy_info)
     bot_handler.run()
     bot_handler.idle()
     if bug_reporter_mode in ('online', 'offline'):

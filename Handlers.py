@@ -23,6 +23,7 @@ from decorators import (CommandHandlerDecorator, ConversationDecorator,
                         DispatcherDecorators, HandlerDecorator, auth, MessageHandlerDecorator)
 from main import BotHandler
 
+# pylint: disable=unused-variable
 
 def add_owner_handlers(server: BotHandler):
 
@@ -93,7 +94,7 @@ def add_debuging_handlers(server: BotHandler):
 
     dispatcher_decorators = DispatcherDecorators(server.dispatcher)
 
-    @dispatcher_decorators.messageHandler(filters=Filters.update, group=0)
+    @dispatcher_decorators.messageHandler(Filters.update, group=0)
     def log_update(u: Update, c: CallbackContext):
         message = (
             'Received a new update event from telegram\n'
@@ -111,7 +112,7 @@ def add_debuging_handlers(server: BotHandler):
                                ownerID=server.ownerID, message=html.escape(message))
 
     @dispatcher_decorators.commandHandler
-    @auth(server.ownerID, server.unknown)
+    @auth(server.ownerID, unknown_command)
     def log_updates(u: Update, c: CallbackContext):
         server.debug = not server.debug
         if server.debug:
@@ -174,13 +175,13 @@ def add_admin_handlers(server: BotHandler):
         u.message.reply_html(res)
 
     @dispatcher_decorators.commandHandler
-    @auth
+    @admin_auth
     def send_feed_toall(u: Update, c: CallbackContext):
         server.send_feed(
             *server.read_feed(), server.get_string('last-feed'), server.iter_all_chats())
 
     @dispatcher_decorators.commandHandler
-    @auth
+    @admin_auth
     def set_interval(u: Update, c: CallbackContext):
         if len(c.args) == 1:
             if c.args[0].isdigit():
@@ -226,7 +227,7 @@ def add_admin_handlers(server: BotHandler):
 
         return STATE_ADD
 
-    sendall_conv_handler = ConversationDecorator(sendall, per_user=True)
+    sendall_conv_handler = ConversationDecorator([sendall], per_user=True)
 
     @sendall_conv_handler.state(STATE_ADD)
     @MessageHandlerDecorator(Filters.regex("^✅Send$"))
@@ -719,7 +720,7 @@ def add_admin_handlers(server: BotHandler):
         CallbackQueryHandler(cancel(STATE_CONFIRM), pattern='^no$')
     )
 
-    server.dispatcher.add_handler(sendall_conv_handler.get_handler())
+    server.dispatcher.add_handler(sendall_conv_handler.get_handler(), group = 1)
 
 def add_users_handlers(server: BotHandler):
     def unknown_msg(u: Update, c: CallbackContext):

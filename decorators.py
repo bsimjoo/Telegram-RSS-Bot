@@ -44,9 +44,10 @@ def MessageHandlerDecorator(self,filters = Filters.all, group=1, **kwargs):
         
 def CommandHandlerDecorator(_func=None, command=None, *args, **kwargs):
     def decorator_command(func):
-        if not isinstance(command,str):
-            command = func.__name__
-        return CommandHandler(command,func,*args,**kwargs)
+        command_ = command
+        if not isinstance(command_,str):
+            command_ = func.__name__
+        return CommandHandler(command_,func,*args,**kwargs)
     
     if _func:
         return decorator_command(_func)
@@ -59,11 +60,12 @@ class DispatcherDecorators:
     
     def commandHandler(self, _func=None, command=None, group=1, *args, **kwargs):
         def decorator_command(func):
-            if not isinstance(command,str):
-                command = func.__name__
-            logging.debug(f'add command handler. command:{command} => {func}')
+            command_ = command
+            if not isinstance(command_, str):
+                command_ = func.__name__
+            logging.debug(f'add command handler. command:{command_} => {func}')
             try:
-                self.dispatcher.add_handler(CommandHandler(command,func,*args,**kwargs), group)
+                self.dispatcher.add_handler(CommandHandler(command_,func,*args,**kwargs), group)
             except:
                 logging.exception('exception while trying to add a command')
                 BugReporter.exception('exception while trying to add a command')
@@ -76,7 +78,7 @@ class DispatcherDecorators:
         else:
             return decorator_command
 
-    def messageHandler(self, _func=None, filters=Filters.all, group=1, *args, **kwargs):
+    def messageHandler(self, filters=Filters.all, group=1, *args, **kwargs):
         def decorator_message(func):
             logging.debug(f'add message handler. handler: {func}')
             try:
@@ -86,11 +88,7 @@ class DispatcherDecorators:
                 BugReporter.exception('exception while trying to add a command')
 
             return func
-        
-        if _func:
-            return decorator_message(_func)
-        else:
-            return decorator_message
+        return decorator_message
 
     def addHandler(self, handler_:Handler = None, group=1):
         def decorator_handler(handler:Handler):
@@ -135,4 +133,8 @@ class ConversationDecorator:
         return handler
 
     def get_handler(self):
-        return ConversationHandler(self.entry_points, self.state, self.fallbacks, **self.__kwargs)
+        return ConversationHandler(
+            entry_points= self.entry_points,
+            states= self.states,
+            fallbacks= self.fallbacks,
+            **self.__kwargs)

@@ -185,6 +185,6 @@ class OnlineReporter:
         return res
 
     @cherrypy.expose
-    @cherrypy.tools.json_out
+    @cherrypy.tools.json_out()
     def json(self):
         return get_data
