@@ -6,6 +6,7 @@ import traceback
 import sys
 
 commit = None
+short_commit = None
 git_source = None
 bugs = dict()
 build_state = 'passing'
@@ -26,6 +27,7 @@ def quick_config(file_path_ = 'bugs.json', use_git_=True, git_='git', git_source
 def get_data():
     return {
         'commit':commit,
+        'short_commit': short_commit,
         'bugs':bugs,
         'build_state':build_state,
         'bugs_count':bugs_count
@@ -53,13 +55,13 @@ def load_file(file_path_):
     
 
 def get_git_info():
-    global commit, git_source
+    global commit, git_source, short_commit
     dir = os.path.dirname(__file__)
     if dir != '':
         os.chdir(dir)
     try:
-        short_hash = subprocess.check_output([git, 'describe', '--always'], stderr=subprocess.STDOUT).strip().decode()
-        commit = subprocess.check_output([git, 'rev-parse', short_hash], stderr=subprocess.STDOUT).strip().decode()
+        short_commit = subprocess.check_output([git, 'describe', '--always'], stderr=subprocess.STDOUT).strip().decode()
+        commit = subprocess.check_output([git, 'rev-parse', short_commit], stderr=subprocess.STDOUT).strip().decode()
     except subprocess.CalledProcessError:
         logging.error('There was an error - command exited with non-zero code')
         return
@@ -164,7 +166,7 @@ class OnlineReporter:
             <h1 style="background-color: #d6eaf8; border-radius:10px; color:black">🐞 Bugs</h1>
             <p><b>What is this?</b> This project uses a simple web
             server to report bugs (exceptions) in a running application.</p>
-            <h6><a href="/json">Show raw JSON</a></h6>'''
+            <h6><a href="/json">Show raw JSON</a>&bul;<a href="/gotocommit">go to commit</a></h6>'''
 
         if bugs_count:
             res+=f'<h2>😔 {bugs_count} bug(s) found</h2>'
@@ -188,3 +190,12 @@ class OnlineReporter:
     @cherrypy.tools.json_out()
     def json(self):
         return get_data()
+
+    @cherrypy.expose
+    def gotocommit(self):
+        import cherrypy
+        if use_git:
+            raise cherrypy.HTTPRedirect('/'.join((git_source,'tree',commit)))
+        else:
+            raise cherrypy.NotFound
+            
