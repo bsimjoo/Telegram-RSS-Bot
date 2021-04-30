@@ -37,7 +37,7 @@ import time
 from functools import wraps
 
 
-def retry(ExceptionToCheck, tries=4, delay=3, backoff=2):
+def retry(tries=4, delay=3, backoff=2):
     """Retry calling the decorated function using an exponential backoff.
 
     http://www.saltycrane.com/blog/2009/11/trying-out-retry-decorator-python/
@@ -65,14 +65,11 @@ def retry(ExceptionToCheck, tries=4, delay=3, backoff=2):
                 try:
                     return f(*args, **kwargs)
                 except Exception as e:
-                    if isinstance(e,ExceptionToCheck):
-                        msg = "%s, Retrying in %d seconds..." % (str(e), mdelay)
-                        logging.warning(msg)
-                        time.sleep(mdelay)
-                        mtries -= 1
-                        mdelay *= backoff
-                    else:
-                        raise e
+                    msg = "%s, Retrying in %d seconds..." % (str(e), mdelay)
+                    logging.warning(msg)
+                    time.sleep(mdelay)
+                    mtries -= 1
+                    mdelay *= backoff
             return f(*args, **kwargs)
 
         return f_retry  # true decorator
@@ -129,11 +126,12 @@ class BotHandler:
         info = BugReporter.exception(msg, exc, report = self.bug_reporter and report)
         logging.exception(msg, exc_info=exc)
         msg = html.escape(msg)
+        tb_string = html.escape(info['tb_string'])
         message = (
             '<b>An exception was raised</b>\n'
-            'L{line_no}@{file_name}: {exc_type}\n'
-            f'{msg}\n'
-            '<pre>{tb_string}</pre>'
+            '<i>L{line_no}@{file_name}: {exc_type}<i>\n'
+            f'{msg}\n\n'
+            f'<pre>{tb_string}</pre>'
         ).format_map(info)
 
         if len(args):
@@ -164,7 +162,7 @@ class BotHandler:
                 tag.attrs = dict()
         return soup
 
-    @retry(HTTPError,10)
+    @retry(10)
     def get_feed(self):
         with urlopen(self.source) as f:
             return f.read().decode('utf-8')
