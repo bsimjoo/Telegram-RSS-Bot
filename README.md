@@ -1,36 +1,20 @@
 <p align="center">
- <img alt="Telegram-RSS-Bot" src="docs/logo.png">
+<a href="https://bsimjoo.github.io/Telegram-RSS-Bot"><img alt="Telegram-RSS-Bot" src="docs/logo.png"></a>
  <p align="center">
- <a href="http://de1.hashbang.sh:7191">
-  <img alt="" src="https://img.shields.io/badge/dynamic/json?url=http://de1.hashbang.sh:7191/json&label=build&query=$.build_state&color=white">
-  <img alt="Reported bugs from pcworms_bot project" src="https://img.shields.io/badge/dynamic/json?url=http://de1.hashbang.sh:7191/json&label=%F0%9F%90%9E+Bugs&query=$.bugs_count&color=red">
- </a>
- <a href="https://github.com/bsimjoo/Telegram-RSS-Bot/labels/bug">
-  <img alt="Bug issue" src="https://img.shields.io/github/issues-raw/bsimjoo/Telegram-RSS-Bot/bug?color=red">
- </a>
- <a href="https://github.com/bsimjoo/Telegram-RSS-Bot/labels/todo">
-  <img src="https://img.shields.io/github/issues-raw/bsimjoo/Telegram-RSS-Bot/todo?color=orange&label=TODOs">
- </a>
- <a href="https://www.codefactor.io/repository/github/bsimjoo/telegram-rss-bot">
-  <img alt="CodeFactor Grade" src="https://img.shields.io/codefactor/grade/github/bsimjoo/Telegram-RSS-Bot">
- </a>
- <a href="https://github.com/bsimjoo/Telegram-RSS-Bot/releases">
-  <img src="https://img.shields.io/github/v/release/bsimjoo/Telegram-RSS-Bot">
-  <img alt="GitHub release (latest SemVer including pre-releases)" src="https://img.shields.io/github/v/release/bsimjoo/Telegram-RSS-Bot?include_prereleases&label=pre-release">
- </a>
- <a href="LICENSE.md">
-  <img src="https://img.shields.io/github/license/bsimjoo/Telegram-RSS-Bot">
- </a>
+ <a href="http://de1.hashbang.sh:7191"><img alt="" src="https://img.shields.io/badge/dynamic/json?url=http://de1.hashbang.sh:7191/json&label=build&query=$.build_state&color=white"></a>
+ <a href="http://de1.hashbang.sh:7191"><img alt="Reported bugs from pcworms_bot project" src="https://img.shields.io/badge/dynamic/json?url=http://de1.hashbang.sh:7191/json&label=%F0%9F%90%9E+Bugs&query=$.bugs_count&color=red"></a>
+ <a href="http://de1.hashbang.sh:7191/gotocommit"><img alt="" src="https://img.shields.io/badge/dynamic/json?url=http://de1.hashbang.sh:7191/json&label=running version&query=$.short_commit&color=purple"></a>
+ <a href="https://github.com/bsimjoo/Telegram-RSS-Bot/labels/bug"><img alt="Bug issue" src="https://img.shields.io/github/issues-raw/bsimjoo/Telegram-RSS-Bot/bug?color=red"></a>
+ <a href="https://github.com/bsimjoo/Telegram-RSS-Bot/labels/todo"><img src="https://img.shields.io/github/issues-raw/bsimjoo/Telegram-RSS-Bot/todo?color=orange&label=TODOs"></a> 
+ <a href="https://www.codefactor.io/repository/github/bsimjoo/telegram-rss-bot"><img alt="CodeFactor Grade" src="https://img.shields.io/codefactor/grade/github/bsimjoo/Telegram-RSS-Bot"></a>
+ <a href="https://github.com/bsimjoo/Telegram-RSS-Bot/releases"><img src="https://img.shields.io/github/v/release/bsimjoo/Telegram-RSS-Bot"></a>
+ <a href="https://github.com/bsimjoo/Telegram-RSS-Bot/releases"><img alt="GitHub release (latest SemVer including pre-releases)" src="https://img.shields.io/github/v/release/bsimjoo/Telegram-RSS-Bot?include_prereleases&label=pre-release"></a>
+ <a href="LICENSE.md"><img src="https://img.shields.io/github/license/bsimjoo/Telegram-RSS-Bot"></a>
  <img src="https://img.shields.io/badge/Python-v3.8+-3776AB?logo=python&logoColor=white">
- <a href="https://core.telegram.org/bots/api-changelog">
-  <img src="https://img.shields.io/badge/Bot%20API-5.1-blue?logo=telegram">
- </a>
- <a href="https://bsimjoo.github.io/Telegram-RSS-Bot/donate">
-  <img alt="Donate" src="https://img.shields.io/badge/Donate-green">
- </a>
- <a href="https://bsimjoo.github.io/Telegram-RSS-Bot">
-  <img alt="Web page" src="https://img.shields.io/badge/open_web_page-green">
- </a>
+ <a href="https://core.telegram.org/bots/api-changelog"><img src="https://img.shields.io/badge/Bot%20API-5.1-blue?logo=telegram"></a>
+<br>
+ <a href="https://bsimjoo.github.io/Telegram-RSS-Bot/donate"><img alt="Donate" src="https://img.shields.io/badge/donate-yellow?logo=bitcoin&style=for-the-badge"></a>
+ <a href="https://bsimjoo.github.io/Telegram-RSS-Bot"><img alt="Web page" src="https://img.shields.io/badge/github.io_page-black?logo=github&style=for-the-badge"></a>
  </p>
  <p align="center">
  A simple telegram bot that read RSS Feeds and send newest feed to all chats(in this article chats = [all PVs, all GPs and all channels]).
