@@ -110,7 +110,7 @@ def exception(custom_msg='', exc_info=None, report = True, **args):
     tb_list = traceback.format_exception(exception_type, ex, tb)
     tb_string = ''.join(tb_list)
     s = traceback.extract_tb(tb)
-    f = s[-1]
+    f = s[0]
     lineno = f.lineno
     filename = os.path.basename(f.filename)
     if report:
