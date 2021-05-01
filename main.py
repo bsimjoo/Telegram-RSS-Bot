@@ -226,6 +226,10 @@ class BotHandler:
                 return None, None
 
     def send_feed(self, feed, messages, msg_header, chats):
+        #TODO:Handle long captions and message
+        # Long messages cause raising exception. So I must define 1024 chars for
+        # captions and 4096 chars limition for messages.
+        # labels: bug
         remove_ids = []
         if len(messages) != 0:
             try:
