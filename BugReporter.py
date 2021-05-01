@@ -114,7 +114,7 @@ def exception(custom_msg='', exc_info=None, report = True, **args):
     lineno = f.lineno
     filename = os.path.basename(f.filename)
     if report:
-        bug(f'L{lineno}@{filename}: {exception_type}', f'{custom_msg}\n{tb_string}', line=lineno, file=filename, **args)
+        bug(f'L{lineno}@{filename}: {exception_type.__name__}', f'{custom_msg}\n{tb_string}', line=lineno, file=filename, **args)
     return {
         'exc_type'  : exception_type,
         'line_no'  : lineno,
@@ -167,7 +167,7 @@ class OnlineReporter:
             <h1 style="background-color: #d6eaf8; border-radius:10px; color:black">🐞 Bugs</h1>
             <p><b>What is this?</b> This project uses a simple web
             server to report bugs (exceptions) in a running application.</p>
-            <h6><a href="/json">Show raw JSON</a>&bul;<a href="/gotocommit">go to commit</a></h6>'''
+            <h6><a href="/json">Show raw JSON</a> &bull; <a href="/gotocommit">go to commit</a></h6>'''
 
         if bugs_count:
             res+=f'<h2>😔 {bugs_count} bug(s) found</h2>'
