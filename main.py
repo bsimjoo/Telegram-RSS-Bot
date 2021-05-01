@@ -121,18 +121,19 @@ class BotHandler:
         Handlers.add_admin_handlers(self)
         Handlers.add_owner_handlers(self)
         Handlers.add_other_handlers(self)
+        Handlers.add_unknown_handlers(self)
 
     def log_bug(self, exc:Exception, msg='', report = True, disable_notification = False,**args):
         info = BugReporter.exception(msg, exc, report = self.bug_reporter and report)
         logging.exception(msg, exc_info=exc)
         msg = html.escape(msg)
-        tb_string = html.escape(info['tb_string'])
+        escaped_info = {k:html.escape(str(v)) for k,v in info.items()}
         message = (
             '<b>An exception was raised</b>\n'
-            '<i>L{line_no}@{file_name}: {exc_type}<i>\n'
+            '<i>L{line_no}@{file_name}: {exc_type}</i>\n'
             f'{msg}\n\n'
-            f'<pre>{tb_string}</pre>'
-        ).format_map(info)
+            '<pre>{tb_string}</pre>'
+        ).format_map(escaped_info)
 
         if len(args):
             message+='\n\nExtra info:'
@@ -144,7 +145,7 @@ class BotHandler:
         try:
             self.bot.send_message(chat_id = self.ownerID, text = message, parse_mode = ParseMode.HTML, disable_notification = disable_notification)
         except:
-            logging.exception('can not send message to owner')
+            logging.exception('can not send message to owner. message:\n'+message)
 
     def purge(self, html_str:str, images=True):
         tags = self.SUPPORTED_HTML_TAGS

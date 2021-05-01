@@ -44,9 +44,9 @@ def add_owner_handlers(server: BotHandler):
             [random.choice(string.ascii_letters+string.digits) for x in range(32)])
         server.admin_token.append(admin_token)
         u.message.reply_html((
-            'one-time admin token:\n<pre>'
+            'one-time admin token:\n<pre>\n'
             f'{admin_token}'
-            '</pre>\n<i>Send this token to anyone you want to promote as admin'
+            '\n</pre>\n<i>Send this token to anyone you want to promote as admin</i>'
         ))
 
     # TODO:availability of removing admins feature
@@ -723,12 +723,6 @@ def add_admin_handlers(server: BotHandler):
     server.dispatcher.add_handler(sendall_conv_handler.get_handler(), group = 1)
 
 def add_users_handlers(server: BotHandler):
-    def unknown_msg(u: Update, c: CallbackContext):
-        u.message.reply_text(server.get_string('unknown-msg'))
-
-    def unknown_command(u: Update, c: CallbackContext):
-        u.message.reply_text(server.get_string('unknown'))
-
     dispatcher_decorators = DispatcherDecorators(server.dispatcher)
 
     @dispatcher_decorators.commandHandler
@@ -809,9 +803,6 @@ def add_users_handlers(server: BotHandler):
         # labels: enhancement
         u.edited_message.reply_text(server.strings['edited-message'])
 
-    dispatcher_decorators.addHandler(MessageHandler(Filters.command, unknown_command))
-    dispatcher_decorators.addHandler(MessageHandler(Filters.all, unknown_msg))
-
 def add_other_handlers(server: BotHandler):
     dispatcher_decorators = DispatcherDecorators(server.dispatcher)
 
@@ -870,3 +861,17 @@ def add_other_handlers(server: BotHandler):
             user_data = context.user_data,
             chat_data = context.chat_data
         )
+
+def add_unknown_handlers(server: BotHandler):
+    "this must be the last method you call while adding handlers"
+
+    dispatcher_decorators = DispatcherDecorators(server.dispatcher)
+
+    def unknown_msg(u: Update, c: CallbackContext):
+        u.message.reply_text(server.get_string('unknown-msg'))
+
+    def unknown_command(u: Update, c: CallbackContext):
+        u.message.reply_text(server.get_string('unknown'))
+
+    dispatcher_decorators.addHandler(MessageHandler(Filters.command, unknown_command),1)
+    dispatcher_decorators.addHandler(MessageHandler(Filters.all, unknown_msg),1)
