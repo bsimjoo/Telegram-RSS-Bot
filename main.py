@@ -1,6 +1,6 @@
 import argparse
 import html
-import json
+import commentjson
 import logging
 import os
 import pickle
@@ -20,7 +20,7 @@ from urllib.request import urlopen
 from urllib.error import HTTPError
 
 import lmdb
-from bs4 import BeautifulSoup
+from bs4 import BeautifulSoup as Soup
 from dateutil.parser import parse
 from telegram import (Chat, InlineKeyboardButton, InlineKeyboardMarkup,
                       InputMediaPhoto, ParseMode, ReplyKeyboardMarkup,
@@ -83,11 +83,13 @@ class BotHandler:
     # this program will handle images it self
     SUPPORTED_HTML_TAGS = '|'.join(('a','b','strong','i','em','code','pre','s','strike','del','u'))
     SUPPORTED_TAG_ATTRS = {'a':'href', 'img':'src', 'pre':'language'}
+    MAX_MSG_LEN = 4096
+    MAX_CAP_LEN = 1024
 
     def __init__(
         self,
         Token,
-        source,
+        feed_configs,
         env,
         chats_db,
         data_db,
@@ -108,7 +110,9 @@ class BotHandler:
         self.admins_pendding = {}
         self.admin_token = []
         self.strings = strings
-        self.source = source
+        #`source` now is a property of `feed_config`
+        self.feed_configs = feed_configs
+        self.source = feed_config['source']
         self.interval = self.get_data('interval', 5*60, data_db)
         self.__check__ = True
         self.bug_reporter = bug_reporter if bug_reporter else None
@@ -123,6 +127,27 @@ class BotHandler:
         Handlers.add_other_handlers(self)
         Handlers.add_unknown_handlers(self)
 
+        # New configurations:
+        # - feed-format: specify feed fromat like xml or ...
+        # - feeds-list-selector: how to find list of all feeds
+        # - title-selector: how to find title
+        # - link-selector: how to get link of source
+        # - content-selector: how to get content
+        # - skip-condition: how to check skip condition
+        #   - format: feed/{selector}, content/{selector}, title/{regex}, none
+
+        self.__skip = lambda feed: False
+        skip_condition = feed_configs.get('feed-skip-condition','none')
+        if skip_condition != 'none':
+            self.__skip_field, skip_condition = skip_condition.split('/')
+            if self.__skip_field == 'feed':
+                self.__skip = lambda feed: bool(feed.select(skip_condition))
+            elif self.__skip_field == 'content':
+                self.__skip = lambda content: bool(content.select(skip_condition))
+            elif self.__skip_field == 'title':
+                match = re.compile(skip_condition).match
+                self.__skip = lambda title: bool(match(title))
+
     def log_bug(self, exc:Exception, msg='', report = True, disable_notification = False,**args):
         info = BugReporter.exception(msg, exc, report = self.bug_reporter and report)
         logging.exception(msg, exc_info=exc)
@@ -135,92 +160,186 @@ class BotHandler:
             '<pre>{tb_string}</pre>'
         ).format_map(escaped_info)
 
-        if len(args):
+        if args:
             message+='\n\nExtra info:'
             msg+='\n\nExtra info'
             for key, value in args.items():
-                message+=f'\n<pre>{key} = {html.escape(json.dumps(value, indent = 2, ensure_ascii = False))}</pre>'
-                msg+=f'\n{key} = {json.dumps(value, indent = 2, ensure_ascii = False)}'
+                message+=f'\n<pre>{key} = {html.escape(commentjson.dumps(value, indent = 2, ensure_ascii = False))}</pre>'
+                msg+=f'\n{key} = {commentjson.dumps(value, indent = 2, ensure_ascii = False)}'
         
         try:
-            self.bot.send_message(chat_id = self.ownerID, text = message, parse_mode = ParseMode.HTML, disable_notification = disable_notification)
+            while message:
+                self.bot.send_message(chat_id = self.ownerID, text = str(self.purge(message[:self.MAX_MSG_LEN])), parse_mode = ParseMode.HTML, disable_notification = disable_notification)
+                message = message[self.MAX_MSG_LEN:]
         except:
             logging.exception('can not send message to owner. message:\n'+message)
 
-    def purge(self, html_str:str, images=True):
+    def __get_content (self, tag):
+        return ''.join([str(c) for c in tag.contents])
+
+    def purge(self, soup:Soup, images=True):
         tags = self.SUPPORTED_HTML_TAGS
         if images:
             tags+='|img'
-        purge = re.compile(r'</?(?!(?:%s)\b)\w+[^>]*/?>'%tags).sub      #This regex will purge any unsupported tag
-        soup = BeautifulSoup(purge('', html_str), 'html.parser')
+        #Remove remove elements with selector
+        for elem in soup.select(self.feed_configs['remove-elements']):
+            elem.replace_with('')
         for tag in soup.descendants:
-            #Remove any unsupported attribute
+            #Remove any unsupported tag and attribute
+            if not tag.name in self.SUPPORTED_HTML_TAGS:
+                tag.replacewith(self.__get_content(tag))
+                #skip checking attrib for this tag
+                continue
             if tag.name in self.SUPPORTED_TAG_ATTRS:
                 attr = self.SUPPORTED_TAG_ATTRS[tag.name]
                 if attr in tag.attrs:
                     tag.attrs = {attr: tag[attr]}
             else:
                 tag.attrs = dict()
-        return soup
+        return str(soup)
 
     @retry(10)
-    def get_feed(self):
-        with urlopen(self.source) as f:
+    def get_feeds(self):
+        with urlopen(self.feed_configs['source']) as f:
             return f.read().decode('utf-8')
 
-    def read_feed(self):
-        feeds_xml = None
+    def summarize(self, soup:Soup, length, read_more):
+        offset = len(read_more)
+        len_ = len(str(soup))
+        if len_>length:
+            offset += len_ - length
+            removed = 0
+            for element in reversed(list(soup.descendants)):
+                if (not element.name) and len(str(element))>offset-removed:
+                    s = str(element)
+                    wrap_index = s.rfind(' ',0 , offset-removed)
+                    if wrap_index == -1:
+                        element.replace_with(s[:-offset+removed])
+                        removed = offset
+                    else:
+                        element.replace_with(s[:wrap_index])
+                    removed = offset
+                else:
+                    element.replace_with('')
+                    removed += len(str(element))
+                if removed >= offset:
+                    break
+        soup.append(read_more)
+        return str(soup)
+
+    def read_last_feed(self):
+        # in this version fead reader uses css selector to get feeds.
+        # 
+        # New configurations:
+        # - parse: specify feed fromat like xml or ...
+        # - feeds-selector: how to get all feeds
+        # - title-selector: how to find title
+        # - link-selector: how to get link of source
+        # - content-selector: how to get content
+        # - feed-skip-condition: how to check skip condition
+        #   - format: feed/{selector}, content/{selector}, title/{regex}, none
+        # - remove-elements-selector: skip any element that has this attribute
+
+        feeds_page = None
         try:
-            feeds_xml = self.get_feed()
+            feeds_page = self.get_feeds()
         except Exception as e:
             self.log_bug(e,'exception while trying to get last feed', False, True)
             return None, None
         
-        soup_page = BeautifulSoup(feeds_xml, 'xml')
-        feeds_list = soup_page.findAll("item")
-        skip = re.compile(r'</?[^>]*name = "skip"[^>]*>').match               #This regex will search for a tag named as "skip" like: <any name = "skip">
+        soup_page = Soup(feeds_page, self.feed_configs.get('feed-format', 'xml'))
+        feeds_list = soup_page.select(self.feed_configs['feeds-selector'])
         for feed in feeds_list:
             try:
-                description = str(feed.description.text)
-                if not skip(description):     #if regex found something skip this post
-                    soup = self.purge(description)
-                    description = str(soup)
-                    messages = [{'type': 'text', 'text': description, 'markup': None}]
-                    #Handle images
-                    images = soup.find_all('img')
+                if self.__skip_field == 'feed':
+                    if self.__skip(feed):
+                        continue    #skip this feed
+
+                title_selector = self.feed_configs['title-selector']
+                title = None
+                if title_selector:
+                    # title-selector could be None (null)
+                    title = str(feed.select(self.feed_configs['title-selector'])[0].text)
+
+                    if self.__skip_field == 'title':
+                        if self.__skip(title):
+                            continue
+                
+                content_selector = self.feed_configs['content-selector']
+                messages = []
+                if content_selector:
+                    content = Soup(self.__get_content(feed.select(content_selector)[0]))
+                    content = self.purge(content)
+                    images = content.find_all('img')
                     first = True
-                    if images:
-                        for img in images:
-                            sep = str(img)
+
+                    if not images:
+                        if len(content)>self.MAX_MSG_LEN:
+                            content = self.summarize(content, self.MAX_MSG_LEN, self.get_string('read-more'))
+                        messages = [{'type': 'text', 'text': content, 'markup': None}]
+                    
+                    for img in images:
+                        have_link = None
+                        split_by = str(img)
+                        if img:
                             have_link = img.parent.name == 'a'
                             if have_link:
-                                sep = str(img.parent)
-                            first_part, description = description.split(sep, 1)
-                            if first:   #for first message
-                                if first_part != '':
-                                    messages[0] = {'type': 'text', 'text': first_part, 'markup': None}
-                                    msg = {'type': 'image',
-                                    'src': img['src'], 'markup': None}
+                                split_by = str(img.parent)
+                                link = img.parent['href']
+                            first_part, content = content.split(split_by, 1)
+                        else:
+                            first_part = content
+                            content = ''
+
+                        if first:
+                            if first_part:
+                                messages[0] = {
+                                    'type': 'text',
+                                    'text': first_part[:self.MAX_MSG_LEN],
+                                    'markup': None
+                                }
+                                first_part = first_part[self.MAX_MSG_LEN:]
+                                while first_part:
+                                    messages.append({
+                                        'type': 'text',
+                                        'text': first_part[:self.MAX_MSG_LEN],
+                                        'markup': None
+                                    })
+                                if content:
+                                    msg = {
+                                        'type': 'image',
+                                        'src': img['src'],
+                                        'text': '',
+                                        'markup': None
+                                    }
                                     if have_link:
-                                        msg['markup'] = [[InlineKeyboardButton('Open image link', img.parent['href'])]]
+                                        msg['markup'] = [[InlineKeyboardButton('Open image link', link)]]
                                     messages.append(msg)
-                                else:
-                                    msg = {'type': 'image', 'src': img['src'], 'markup': None}
-                                    if have_link:
-                                        msg['markup'] = [[InlineKeyboardButton('Open image link', img.parent['href'])]]
-                                    messages[0] = msg
-                                first = False
                             else:
-                                messages[-1]['text'] = first_part
-                                msg = {'type': 'image',
-                                    'src': img['src'], 'markup': None}
+                                msg = {
+                                    'type': 'image',
+                                    'src': img['src'],
+                                    'text':'',
+                                    'markup': None
+                                }
                                 if have_link:
-                                    msg['markup'] = [[InlineKeyboardButton('Open image link', img.parent['href'])]]
-                                messages.append(msg)
-                        #End for img
-                        messages[-1]['text'] = description
-                    #End if images
-                    return feed, messages
+                                    msg['markup'] = [[InlineKeyboardButton('Open image link', link)]]
+                                messages[0] = msg
+                            first = False
+                        else:
+                            messages[-1]['text'] += first_part[:self.MAX_CAP_LEN]
+                            msg = {
+                                'type': 'image',
+                                'src': img['src'],
+                                'text': first_part[self.MAX_CAP_LEN:],
+                                'markup': None
+                            }
+                            if have_link:
+                                msg['markup'] = [[InlineKeyboardButton('Open image link', link)]]
+                            messages.append(msg)
+                    #End for img
+                    messages[-1]['text'] += content
+                return feed, messages
             except Exception as e:
                 self.log_bug(e,'Exception while reading feed', feed = str(feed))
                 return None, None
@@ -287,7 +406,7 @@ class BotHandler:
                 yield key.decode(), pickle.loads(value)
 
     def check_new_feed(self):
-        feed, messages = self.read_feed()
+        feed, messages = self.read_last_feed()
         if feed:
             date = self.get_data('last-feed-date', DB = self.data_db)
             if date:
@@ -352,19 +471,24 @@ if __name__ == '__main__':
 
     parser.add_argument('-c','--config',
     help='Specify config file',
-    default='user-config.conf', required=False, type=argparse.FileType('r'))
+    default='user-config.json', required=False, type=argparse.FileType('r'))
 
     args = parser.parse_args(sys.argv[1:])
-    config = ConfigParser(allow_no_value=False)
+    config = dict()
     with args.config as cf:
-        config.read_string(cf.read())
-    main_config = config['main']
-    file_name = main_config.get('log-file')
+        config = commentjson.load(cf)
+
+    token = config.get('token')
+    if not token:
+        logging.error("No Token, exiting")
+        sys.exit()
+    
+    log_file_name = config.get('log-file')
     logging.basicConfig(
         format = '%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-        filename=file_name,
-        level = logging._nameToLevel.get(main_config.get('log-level','INFO').upper(),logging.INFO))
-    env = lmdb.open(main_config.get('db-path','db.lmdb'), max_dbs = 3)
+        filename=log_file_name,
+        level = logging._nameToLevel.get(config.get('log-level','INFO').upper(),logging.INFO))
+    env = lmdb.open(config.get('db-path','db.lmdb'), max_dbs = 3)
     chats_db = env.open_db(b'chats')
     data_db = env.open_db(b'config')        #using old name for compatibility
 
@@ -381,9 +505,10 @@ if __name__ == '__main__':
                 with env.begin(chats_db, write=True) as txn:
                     d=env.open_db()
                     txn.drop(d)
+            sys.exit()
 
-    language = main_config.get('language','en-us')
-    strings_file = main_config.get('strings-file', 'Default-strings.json')
+    language = config.get('language','en-us')
+    strings_file = config.get('strings-file', 'Default-strings.json')
     checks=[
         (strings_file, language),
         (strings_file, 'en-us'),
@@ -394,7 +519,7 @@ if __name__ == '__main__':
     for file, language in checks:
         if os.path.exists(file):
             with open(file) as f:
-                strings = json.load(f)
+                strings = commentjson.load(f)
             if language in strings:
                 strings = strings[language]
                 logging.info(f'using "{language}" language from "{file}" file')
@@ -406,66 +531,61 @@ if __name__ == '__main__':
 
     if not strings or strings == dict():
         logging.error('Cannot use a strings file. exiting...')
-        exit(1)
+        sys.exit(1)
 
-    bug_reporter_mode = main_config.get('bug-reporter', 'off')
-    if bug_reporter_mode in ('online', 'offline'):
-        bugs_file = main_config.get('bugs-file','bugs.json')
-        use_git = main_config.getboolean('use-git',False)
-        git = main_config.get('git-command','git')
-        git_source = main_config.get('git-source')
+    bug_reporter_config = config.get('bug-reporter','off')
+    if bug_reporter_config != 'off' and isinstance(bug_reporter_config, dict):
+        bugs_file = bug_reporter_config.get('bugs-file','bugs.json')
+        use_git = bug_reporter_config.get('use-git',False)
+        git = bug_reporter_config.get('git-command','git')
+        git_source = bug_reporter_config.get('git-source')
         BugReporter.quick_config(bugs_file, use_git, git, git_source)
         
-        if bug_reporter_mode == 'online':
+        if 'http-config' in bug_reporter_config:
             try:
                 from BugReporter import OnlineReporter
                 import cherrypy
                 
-                conf = main_config.get('reporter-config-file','Bug-reporter.conf')
-                if os.path.exists(conf):
-                    cherrypy.log.access_log.propagate = False
-                    cherrypy.tree.mount(OnlineReporter(),'/')
-                    cherrypy.config.update(conf)
-                    cherrypy.engine.start()
+                conf = config.get('http-config',{
+                    'global':{
+                        'server.socket_host': '0.0.0.0',
+                        'server.socket_port': 7191,
+                        'log.screen': False
+                    }
+                })
+                cherrypy.log.access_log.propagate = False
+                cherrypy.tree.mount(OnlineReporter(),'/', config=conf)
+                cherrypy.config.update(conf)
+                cherrypy.engine.start()
                 
             except ModuleNotFoundError:
                 logging.error('Cherrypy module not found, please first make sure that it is installed and then use http-bug-reporter')
-                logging.info('Can not run http bug reporter, skipping http, saving bugs in bugs.json')
-            except Exception as Argument:
+                logging.info(f'Can not run http bug reporter, skipping http, saving bugs in {bugs_file}')
+            except:
                 logging.exception("Error occurred while running http server")
-                logging.info('Can not run http bug reporter, skipping http, saving bugs in bugs.json')
+                logging.info(f'Can not run http bug reporter, skipping http, saving bugs in {bugs_file}')
             else:
-                logging.info(f'reporting bugs with http server and saving them as bugs.json')
+                logging.info(f'reporting bugs with http server and saving them as {bugs_file}')
         else:
-            logging.info(f'saving bugs in bugs.json')
+            logging.info(f'saving bugs in {bugs_file}')
 
-    token = main_config.get('token')
-    if not token:
-        logging.error("No Token, exiting")
-        sys.exit()
+    debug = config.get('debug',False)
 
-    debug = main_config.getboolean('debug',fallback=False)
-
-    use_proxy = main_config.getboolean('use-proxy', fallback=False)
+    use_proxy = config.get('use-proxy', False)
     proxy_info = None
     if use_proxy:
-        proxy_info={
-            'proxy_url': main_config.get('proxy-url','socks5h://127.0.0.1:9090')
-        }
-        if 'proxy-user' in main_config:
-            proxy_info['urllib3_proxy_kwargs'] = {
-                'username': main_config.get('proxy-user'),
-                'password': main_config.get('proxy-pass')
-            }
+        proxy_info = config.get('proxy-info')
 
-    bot_handler = BotHandler(token, main_config.get('source','https://pcworms.blog.ir/rss/'), env,
-                             chats_db, data_db, strings, not bug_reporter_mode == 'off', debug, proxy_info)
+    feed_configs = config['feed-configs']
+
+    bot_handler = BotHandler(token, config.get('source','https://pcworms.blog.ir/rss/'), env,
+                             chats_db, data_db, strings, bug_reporter_config != 'off', debug, proxy_info, feed_configs)
     bot_handler.run()
     bot_handler.idle()
-    if bug_reporter_mode in ('online', 'offline'):
+    if bug_reporter_config != 'off':
         logging.info('saving bugs report')
         BugReporter.dump()
-    if bug_reporter_mode == 'online':
+    if 'http-config' in bug_reporter_config:
         logging.info('stoping http reporter')
         cherrypy.engine.stop()
     env.close()
