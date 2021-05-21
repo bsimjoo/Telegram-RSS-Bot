@@ -21,7 +21,7 @@ from urllib.error import HTTPError
 
 import lmdb
 from bs4 import BeautifulSoup as Soup
-from dateutil.parser import parse
+from dateutil.parser import parse as parse_date
 from telegram import (Chat, InlineKeyboardButton, InlineKeyboardMarkup,
                       InputMediaPhoto, ParseMode, ReplyKeyboardMarkup,
                       ReplyKeyboardRemove, Update, ChatMember)
@@ -112,9 +112,9 @@ class BotHandler:
         self.strings = strings
         #`source` now is a property of `feed_config`
         self.feed_configs = feed_configs
-        self.source = feed_config['source']
+        self.source = feed_configs['source']
         self.interval = self.get_data('interval', 5*60, data_db)
-        self.__check__ = True
+        self.__check = True
         self.bug_reporter = bug_reporter if bug_reporter else None
         self.debug = False
 
@@ -224,22 +224,23 @@ class BotHandler:
                     removed += len(str(element))
                 if removed >= offset:
                     break
-        soup.append(read_more)
-        return str(soup)
+            soup.append(read_more)
+        return str(soup), len_>length
 
-    def read_last_feed(self):
-        # in this version fead reader uses css selector to get feeds.
-        # 
-        # New configurations:
-        # - parse: specify feed fromat like xml or ...
-        # - feeds-selector: how to get all feeds
-        # - title-selector: how to find title
-        # - link-selector: how to get link of source
-        # - content-selector: how to get content
-        # - feed-skip-condition: how to check skip condition
-        #   - format: feed/{selector}, content/{selector}, title/{regex}, none
-        # - remove-elements-selector: skip any element that has this attribute
+    # in this version fead reader uses css selector to get feeds.
+    # 
+    # New configurations:
+    # - parse: specify feed fromat like xml or ...
+    # - feeds-selector: how to get all feeds
+    # - title-selector: how to find title
+    # - link-selector: how to get link of source
+    # - date-selector: how to get feed date
+    # - content-selector: how to get content
+    # - feed-skip-condition: how to check skip condition
+    #   - format: feed/{selector}, content/{selector}, title/{regex}, none
+    # - remove-elements-selector: skip any element that has this attribute
 
+    def read_feed(self, index=0):
         feeds_page = None
         try:
             feeds_page = self.get_feeds()
@@ -249,14 +250,18 @@ class BotHandler:
         
         soup_page = Soup(feeds_page, self.feed_configs.get('feed-format', 'xml'))
         feeds_list = soup_page.select(self.feed_configs['feeds-selector'])
+        if 0<index<len(feeds_list):
+            feeds_list = feeds_list[index:]
+        title, link, content, date = None, None, None, None
+        i=-1
         for feed in feeds_list:
+            i+=1
             try:
                 if self.__skip_field == 'feed':
                     if self.__skip(feed):
                         continue    #skip this feed
 
                 title_selector = self.feed_configs['title-selector']
-                title = None
                 if title_selector:
                     # title-selector could be None (null)
                     title = str(feed.select(self.feed_configs['title-selector'])[0].text)
@@ -264,137 +269,132 @@ class BotHandler:
                     if self.__skip_field == 'title':
                         if self.__skip(title):
                             continue
+
+                date = str(feed.select(self.feed_configs['date-selector'])[0].text)
                 
                 content_selector = self.feed_configs['content-selector']
-                messages = []
                 if content_selector:
                     content = Soup(self.__get_content(feed.select(content_selector)[0]))
-                    content = self.purge(content)
-                    images = content.find_all('img')
-                    first = True
+            except Exception as e:
+                self.log_bug(e,'Exception while reading feed', feed = str(feed))
+                break
+        
+        return {
+            'title': title,
+            'link': link,
+            'content': content,
+            'date': date,
+            'index': i+index
+            }
 
-                    if not images:
-                        if len(content)>self.MAX_MSG_LEN:
-                            content = self.summarize(content, self.MAX_MSG_LEN, self.get_string('read-more'))
-                        messages = [{'type': 'text', 'text': content, 'markup': None}]
-                    
-                    for img in images:
-                        have_link = None
-                        split_by = str(img)
-                        if img:
-                            have_link = img.parent.name == 'a'
-                            if have_link:
-                                split_by = str(img.parent)
-                                link = img.parent['href']
-                            first_part, content = content.split(split_by, 1)
-                        else:
-                            first_part = content
-                            content = ''
+    def render_feed(self, title: str, link: str, content: Soup, header: str):
+        messages = [{
+            'type': 'text',
+            'text': header+'\n'+(title if title else ''),
+            'markup': []
+        }]
+        overflow = False
+        if content:
+            content = self.purge(content)
+            images = content.find_all('img')
+            first = True
 
-                        if first:
-                            if first_part:
-                                messages[0] = {
-                                    'type': 'text',
-                                    'text': first_part[:self.MAX_MSG_LEN],
-                                    'markup': None
-                                }
-                                first_part = first_part[self.MAX_MSG_LEN:]
-                                while first_part:
-                                    messages.append({
-                                        'type': 'text',
-                                        'text': first_part[:self.MAX_MSG_LEN],
-                                        'markup': None
-                                    })
-                                if content:
-                                    msg = {
-                                        'type': 'image',
-                                        'src': img['src'],
-                                        'text': '',
-                                        'markup': None
-                                    }
-                                    if have_link:
-                                        msg['markup'] = [[InlineKeyboardButton('Open image link', link)]]
-                                    messages.append(msg)
-                            else:
-                                msg = {
-                                    'type': 'image',
-                                    'src': img['src'],
-                                    'text':'',
-                                    'markup': None
-                                }
-                                if have_link:
-                                    msg['markup'] = [[InlineKeyboardButton('Open image link', link)]]
-                                messages[0] = msg
-                            first = False
-                        else:
-                            messages[-1]['text'] += first_part[:self.MAX_CAP_LEN]
+            if not len(images):
+                content, overflow = self.summarize(content, self.MAX_MSG_LEN, self.get_string('read-more'))
+                messages['text'] += '\n'+content
+            
+            left, link, right = None, None, content
+            
+            for img in images:
+                last_message = messages[-1]
+                split_by = str(img)
+                if img.parent.name == 'a':
+                    split_by = str(img.parent)
+                    link = img.parent['href']
+                left, right = right.split(split_by, 1)
+
+                if first:
+                    if left:
+                        length = self.MAX_MSG_LEN if last_message['type'] == 'text' else self.MAX_CAP_LEN
+                        left, overflow = self.summarize(left, length, self.get_string('read-more'))
+                        last_message['text'] += '\n'+left
+                        if right and not overflow:
                             msg = {
                                 'type': 'image',
                                 'src': img['src'],
-                                'text': first_part[self.MAX_CAP_LEN:],
-                                'markup': None
+                                'text': '',
+                                'markup': []
                             }
-                            if have_link:
-                                msg['markup'] = [[InlineKeyboardButton('Open image link', link)]]
+                            if link:
+                                msg['markup'] = [[InlineKeyboardButton(self.get_string('image-link'), link)]]
                             messages.append(msg)
-                    #End for img
-                    messages[-1]['text'] += content
-                return feed, messages
-            except Exception as e:
-                self.log_bug(e,'Exception while reading feed', feed = str(feed))
-                return None, None
-
-    def send_feed(self, feed, messages, msg_header, chats):
-        #TODO:Handle long captions and message
-        # Long messages cause raising exception. So I must define 1024 chars for
-        # captions and 4096 chars limition for messages.
-        # labels: bug
-        remove_ids = []
-        if len(messages) != 0:
-            try:
-                if messages[-1]['markup']:
-                    messages[-1]['markup'].append(
-                        [InlineKeyboardButton('View post', str(feed.link.text))])
+                    else:
+                        last_message['type'] = 'image'
+                        last_message['src'] = img['src']
+                        if link:
+                            last_message['markup'] = [[InlineKeyboardButton(self.get_string('image-link'), link)]]
+                    first = False
                 else:
-                    messages[-1]['markup'] = [[InlineKeyboardButton('View post', str(feed.link.text))]]
-                
-                msg_header = '<i>%s</i>\n\n<b><a href = "%s">%s</a></b>\n' % (
-                    msg_header, feed.link.text, feed.title.text)
-                messages[0]['text'] = msg_header+messages[0]['text']
-                for chat_id, chat_data in chats:
-                    for msg in messages:
-                        try:
-                            if msg['type'] == 'text':
-                                self.bot.send_message(
-                                    chat_id,
-                                    msg['text'],
-                                    parse_mode = ParseMode.HTML,
-                                    reply_markup = InlineKeyboardMarkup(msg['markup']) if msg['markup'] else None
-                                )
-                            elif msg['type'] == 'image':
-                                if msg['text'] == '':
-                                    msg['text'] = None
-                                self.bot.send_photo(
-                                    chat_id,
-                                    msg['src'],
-                                    msg['text'],
-                                    parse_mode = ParseMode.HTML,
-                                    reply_markup = InlineKeyboardMarkup(msg['markup']) if msg['markup'] else None
-                                )
-                        except Unauthorized as e:
-                            self.log_bug(e,'handled an exception while sending a feed to a user. removing chat', report=False, chat_id = chat_id, chat_data = chat_data)
-                            try:
-                                with self.env.begin(self.chats_db, write = True) as txn:
-                                    txn.delete(str(chat_id).encode())
-                            except Exception as e2:
-                                self.log_bug(e2,'exception while trying to remove chat')
-                                remove_ids.append(chat_id)
-                        except Exception as e:
-                            self.log_bug(e, 'Exception while sending a feed to a user', message = msg, chat_id = chat_id, chat_data = chat_data)
-                            break
+                    length = self.MAX_MSG_LEN if last_message['type'] == 'text' else self.MAX_CAP_LEN
+                    left, overflow = self.summarize(left, length, self.get_string('read-more'))
+                    last_message['text'] += left
+                    if right and not overflow:
+                        msg = {
+                            'type': 'image',
+                            'src': img['src'],
+                            'text': '',
+                            'markup': []
+                        }
+                        if link:
+                            msg['markup'] = [[InlineKeyboardButton(self.get_string('image-link'), link)]]
+                        messages.append(msg)
+                if overflow:
+                    break
+            #End for img
+            if not overflow:
+                length = self.MAX_MSG_LEN if messages[-1]['type'] == 'text' else self.MAX_CAP_LEN
+                right, overflow = self.summarize(right, length, self.get_string('read-more'))
+                messages[-1]['text'] += right
+            messages[-1]['markup'].append([InlineKeyboardButton(self.get_string('goto-post'), link)])
+        return messages
 
-            except Exception as e:
-                self.log_bug(e,'Exception while trying to send feed', messages = messages)
+    def send_feed(self, messages, chats):
+        remove_ids = [] #Delete IDs that are no longer available
+        try:
+            for chat_id, chat_data in chats:
+                for msg in messages:
+                    try:
+                        if msg['type'] == 'text':
+                            self.bot.send_message(
+                                chat_id,
+                                msg['text'],
+                                parse_mode = ParseMode.HTML,
+                                reply_markup = InlineKeyboardMarkup(msg['markup']) if msg['markup'] else None
+                            )
+                        elif msg['type'] == 'image':
+                            if msg['text'] == '':
+                                msg['text'] = None
+                            self.bot.send_photo(
+                                chat_id,
+                                msg['src'],
+                                msg['text'],
+                                parse_mode = ParseMode.HTML,
+                                reply_markup = InlineKeyboardMarkup(msg['markup']) if msg['markup'] else None
+                            )
+                    except Unauthorized as e:
+                        self.log_bug(e,'handled an exception while sending a feed to a user. removing chat', report=False, chat_id = chat_id, chat_data = chat_data)
+                        try:
+                            with self.env.begin(self.chats_db, write = True) as txn:
+                                txn.delete(str(chat_id).encode())
+                        except Exception as e2:
+                            self.log_bug(e2,'exception while trying to remove chat')
+                            remove_ids.append(chat_id)
+                    except Exception as e:
+                        self.log_bug(e, 'Exception while sending a feed to a user', message = msg, chat_id = chat_id, chat_data = chat_data)
+                        break
+
+        except Exception as e:
+            self.log_bug(e,'Exception while trying to send feed', messages = messages)
 
         for chat_id in remove_ids:
             with self.env.begin(self.chats_db, write = True) as txn:
@@ -406,21 +406,20 @@ class BotHandler:
                 yield key.decode(), pickle.loads(value)
 
     def check_new_feed(self):
-        feed, messages = self.read_last_feed()
+        feed = self.read_feed(0)    #read last feed
         if feed:
-            date = self.get_data('last-feed-date', DB = self.data_db)
-            if date:
-                feed_date = parse(feed.pubDate.text)
-                if feed_date > date:
-                    self.set_data('last-feed-date',
-                                      feed_date, DB = self.data_db)
-                    self.send_feed(feed, messages, self.get_string('new-feed'), self.iter_all_chats())
-            else:
-                feed_date = parse(feed.pubDate.text)
-                self.set_data('last-feed-date',
-                                  feed_date, DB = self.data_db)
-                self.send_feed(feed, messages, self.get_string('new-feed'), self.iter_all_chats())
-        if self.__check__:
+            last_date = self.get_data('last-feed-date', DB = self.data_db)
+            feed_date = parse_date(feed['date'])
+            if not last_date or last_date < feed_date:  # if last_date not exist or last feed's date is older than the new one
+                self.set_data('last-feed-date', feed_date, DB = self.data_db)
+            if last_date and last_date < feed_date:
+                messages = self.render_feed(
+                    title=feed['title'],
+                    link= feed['link'],
+                    content= feed['content'],
+                    header= self.get_string('new-feed'))
+                self.send_feed(messages, self.iter_all_chats())
+        if self.__check:
             self.check_thread = Timer(self.interval, self.check_new_feed)
             self.check_thread.start()
 
@@ -453,7 +452,7 @@ class BotHandler:
     def idle(self):
         self.updater.idle()
         self.updater.stop()
-        self.__check__ = False
+        self.__check = False
         self.check_thread.cancel()
         if self.check_thread.is_alive():
             self.check_thread.join()
@@ -471,7 +470,7 @@ if __name__ == '__main__':
 
     parser.add_argument('-c','--config',
     help='Specify config file',
-    default='user-config.json', required=False, type=argparse.FileType('r'))
+    default='user-config.jsonc', required=False, type=argparse.FileType('r'))
 
     args = parser.parse_args(sys.argv[1:])
     config = dict()
@@ -508,7 +507,7 @@ if __name__ == '__main__':
             sys.exit()
 
     language = config.get('language','en-us')
-    strings_file = config.get('strings-file', 'Default-strings.json')
+    strings_file = config.get('strings-file', 'default-strings.json')
     checks=[
         (strings_file, language),
         (strings_file, 'en-us'),
@@ -578,8 +577,7 @@ if __name__ == '__main__':
 
     feed_configs = config['feed-configs']
 
-    bot_handler = BotHandler(token, config.get('source','https://pcworms.blog.ir/rss/'), env,
-                             chats_db, data_db, strings, bug_reporter_config != 'off', debug, proxy_info, feed_configs)
+    bot_handler = BotHandler(token, config.get('feed-configs'), env, chats_db, data_db, strings, bug_reporter_config != 'off', debug, proxy_info)
     bot_handler.run()
     bot_handler.idle()
     if bug_reporter_config != 'off':

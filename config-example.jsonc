@@ -25,7 +25,7 @@
         //      format: feed/css-selector, content/css-selector, title/regex
         //   remove-elements-selector: hide any element that match this css-selector
         "feeds-selector": "item",
-        "time-selector": "pubDate",
+        "date-selector": "pubDate",
         "link-selector": "link",
         "title-selector": "title",
         "content-selector": "description",

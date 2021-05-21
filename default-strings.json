@@ -34,7 +34,9 @@
         "unknown": "Unknown command",
         "unknown-msg": "Sorry, I can't chat with anyone right now!",
         "edited-message": "Sorry this bot can not handle edited messages, please resend your message",
-        "read-more": "read more ..."
+        "read-more": "read more ...",
+        "image-link": "Open image URL",
+        "open-post": "Read this article"
     },
     "fa-ir": {
         "welcome": [
@@ -76,6 +78,8 @@
         "unknown": "متأسفم، دستوری که وارد کردید صحیح نیست",
         "unknown-msg": "!متأسفم، در حال حاضر نمی توانم با کاربران چت کنم",
         "edited-message": "با عرض پوزش این ربات در حال حاضر از ویرایش پیام پشتیبانی نمی کند",
-        "read-more": "بیشتر بخوانید ..."
+        "read-more": "بیشتر بخوانید ...",
+        "image-link": "باز کردن لینک تصویر",
+        "goto-post": "خواندن این مطلب"
     }
 }
