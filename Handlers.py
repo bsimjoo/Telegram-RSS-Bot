@@ -178,7 +178,11 @@ def add_admin_handlers(server: BotHandler):
     @admin_auth
     def send_feed_toall(u: Update, c: CallbackContext):
         server.send_feed(
-            *server.read_feed(), server.get_string('last-feed'), server.iter_all_chats())
+            server.render_feed(
+                server.read_feed(0),
+                server.get_string('last-feed')
+            ),
+            server.iter_all_chats())
 
     @dispatcher_decorators.commandHandler
     @admin_auth
@@ -785,7 +789,12 @@ def add_users_handlers(server: BotHandler):
             if c.user_data['time'] > datetime.now():
                 u.message.reply_text(server.get_string('time-limit-error'))
                 return
-        server.send_feed(*server.read_feed(),msg_header = server.get_string('last-feed'),chats = [(u.effective_chat.id, c.chat_data)])
+        server.send_feed(
+            server.render_feed(
+                server.read_feed(0),
+                server.get_string('last-feed')
+            ),
+            chats = [(u.effective_chat.id, c.chat_data)])
         c.user_data['time'] = datetime.now() + timedelta(minutes = 2)      #The next request is available 2 minutes later
     
     @dispatcher_decorators.commandHandler(command = 'help')
@@ -867,11 +876,11 @@ def add_unknown_handlers(server: BotHandler):
 
     dispatcher_decorators = DispatcherDecorators(server.dispatcher)
 
-    def unknown_msg(u: Update, c: CallbackContext):
-        u.message.reply_text(server.get_string('unknown-msg'))
-
+    @dispatcher_decorators.messageHandler(Filters.command)
     def unknown_command(u: Update, c: CallbackContext):
         u.message.reply_text(server.get_string('unknown'))
-
-    dispatcher_decorators.addHandler(MessageHandler(Filters.command, unknown_command),1)
-    dispatcher_decorators.addHandler(MessageHandler(Filters.all, unknown_msg),1)
+    
+    @dispatcher_decorators.messageHandler
+    def unknown_msg(u: Update, c: CallbackContext):
+        if u._effective_chat.type == Chat.PRIVATE:
+            u.message.reply_text(server.get_string('unknown-msg'))

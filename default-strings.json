@@ -36,7 +36,7 @@
         "edited-message": "Sorry this bot can not handle edited messages, please resend your message",
         "read-more": "read more ...",
         "image-link": "Open image URL",
-        "open-post": "Read this article"
+        "goto-post": "Read this article"
     },
     "fa-ir": {
         "welcome": [

@@ -1,36 +1,25 @@
 import argparse
 import html
+import bs4
 import commentjson
 import logging
 import os
 import pickle
-import random
 import re
-import string
 import sys
-import traceback
-import typing
+
+from telegram.files.document import Document
 import BugReporter
 import Handlers
-from collections import OrderedDict
-from configparser import ConfigParser
-from datetime import datetime, timedelta
+import io
 from threading import Timer
 from urllib.request import urlopen
-from urllib.error import HTTPError
-
 import lmdb
 from bs4 import BeautifulSoup as Soup
 from dateutil.parser import parse as parse_date
-from telegram import (Chat, InlineKeyboardButton, InlineKeyboardMarkup,
-                      InputMediaPhoto, ParseMode, ReplyKeyboardMarkup,
-                      ReplyKeyboardRemove, Update, ChatMember)
-from telegram.bot import Bot
-from telegram.error import BadRequest, NetworkError, Unauthorized
-from telegram.ext import (BaseFilter, CallbackContext, CallbackQueryHandler,
-                          CommandHandler, ConversationHandler, Filters,
-                          MessageHandler, ChatMemberHandler, Updater)
-from telegram.utils.helpers import DEFAULT_NONE
+from telegram import (InlineKeyboardButton, InlineKeyboardMarkup,ParseMode)
+from telegram.error import Unauthorized
+from telegram.ext import Updater
 
 
 import time
@@ -137,8 +126,8 @@ class BotHandler:
         #   - format: feed/{selector}, content/{selector}, title/{regex}, none
 
         self.__skip = lambda feed: False
-        skip_condition = feed_configs.get('feed-skip-condition','none')
-        if skip_condition != 'none':
+        skip_condition = feed_configs.get('feed-skip-condition')
+        if isinstance(skip_condition, str):
             self.__skip_field, skip_condition = skip_condition.split('/')
             if self.__skip_field == 'feed':
                 self.__skip = lambda feed: bool(feed.select(skip_condition))
@@ -167,36 +156,39 @@ class BotHandler:
                 message+=f'\n<pre>{key} = {html.escape(commentjson.dumps(value, indent = 2, ensure_ascii = False))}</pre>'
                 msg+=f'\n{key} = {commentjson.dumps(value, indent = 2, ensure_ascii = False)}'
         
-        try:
-            while message:
-                self.bot.send_message(chat_id = self.ownerID, text = str(self.purge(message[:self.MAX_MSG_LEN])), parse_mode = ParseMode.HTML, disable_notification = disable_notification)
-                message = message[self.MAX_MSG_LEN:]
-        except:
-            logging.exception('can not send message to owner. message:\n'+message)
+        if len(message)<=self.MAX_MSG_LEN:
+            self.bot.send_message(chat_id = self.ownerID, text = str(message), parse_mode = ParseMode.HTML, disable_notification = disable_notification)
+        else:
+            f = io.StringIO(message)
+            self.bot.send_document(chat_id= self.ownerID,
+                document= f,
+                filename= '{file_name}_{line_no}.html'.format_map(info),
+                caption= 'log of an unhandled exception')
 
     def __get_content (self, tag):
-        return ''.join([str(c) for c in tag.contents])
+        if isinstance(tag, bs4.NavigableString):
+            return tag.string
+        else:
+            return ''.join([str(c) for c in tag.contents])
 
-    def purge(self, soup:Soup, images=True):
+    def purge(self, html, images=True):
         tags = self.SUPPORTED_HTML_TAGS
         if images:
             tags+='|img'
-        #Remove remove elements with selector
-        for elem in soup.select(self.feed_configs['remove-elements']):
-            elem.replace_with('')
+        if not isinstance(html, str):
+            html = str(html)
+        pattern = r'</?(?!(?:%s)\b)\w+[^>]*/?>'%tags
+        purge = re.compile(pattern).sub      #This regex will purge any unsupported tag
+        soup = Soup(purge('', html), 'html.parser')
         for tag in soup.descendants:
-            #Remove any unsupported tag and attribute
-            if not tag.name in self.SUPPORTED_HTML_TAGS:
-                tag.replacewith(self.__get_content(tag))
-                #skip checking attrib for this tag
-                continue
+            #Remove any unsupported attribute
             if tag.name in self.SUPPORTED_TAG_ATTRS:
                 attr = self.SUPPORTED_TAG_ATTRS[tag.name]
                 if attr in tag.attrs:
                     tag.attrs = {attr: tag[attr]}
             else:
                 tag.attrs = dict()
-        return str(soup)
+        return soup
 
     @retry(10)
     def get_feeds(self):
@@ -264,17 +256,27 @@ class BotHandler:
                 title_selector = self.feed_configs['title-selector']
                 if title_selector:
                     # title-selector could be None (null)
-                    title = str(feed.select(self.feed_configs['title-selector'])[0].text)
+                    title = str(feed.select(title_selector)[0].text)
 
                     if self.__skip_field == 'title':
                         if self.__skip(title):
                             continue
+
+                link_selector = self.feed_configs['link-selector']
+                if link_selector:
+                    link = str(feed.select(link_selector)[0].text)
 
                 date = str(feed.select(self.feed_configs['date-selector'])[0].text)
                 
                 content_selector = self.feed_configs['content-selector']
                 if content_selector:
                     content = Soup(self.__get_content(feed.select(content_selector)[0]))
+
+                    if self.__skip_field == 'content':
+                        if self.__skip(content):
+                            continue
+                
+                break
             except Exception as e:
                 self.log_bug(e,'Exception while reading feed', feed = str(feed))
                 break
@@ -287,37 +289,70 @@ class BotHandler:
             'index': i+index
             }
 
-    def render_feed(self, title: str, link: str, content: Soup, header: str):
+    def render_feed(self, feed: dict, header: str):
+        title = feed['title']
+        post_link = feed['link']
+        content = feed['content']
         messages = [{
             'type': 'text',
-            'text': header+'\n'+(title if title else ''),
+            'text': header+'\n',
             'markup': []
         }]
+        if title:
+            title = f'<b>{title}</b>'
+            if post_link:
+                title = f'<a href="{post_link}">{title}</a>'
+            messages[0]['text']+=title
         overflow = False
         if content:
+            #Remove elements with selector
+            remove_elem = self.feed_configs.get('remove-elements')
+            if remove_elem:
+                for elem in content.select():
+                    elem.replace_with('')
             content = self.purge(content)
             images = content.find_all('img')
             first = True
 
             if not len(images):
                 content, overflow = self.summarize(content, self.MAX_MSG_LEN, self.get_string('read-more'))
-                messages['text'] += '\n'+content
-            
-            left, link, right = None, None, content
-            
-            for img in images:
-                last_message = messages[-1]
-                split_by = str(img)
-                if img.parent.name == 'a':
-                    split_by = str(img.parent)
-                    link = img.parent['href']
-                left, right = right.split(split_by, 1)
+                messages[0]['text'] += '\n'+content
+            else:
+                left, img_link, right = None, None, content
+                
+                for img in images:
+                    last_message = messages[-1]
+                    split_by = str(img)
+                    if img.parent.name == 'a':
+                        split_by = str(img.parent)
+                        img_link = img.parent['href']
+                    left, right = right.split(split_by, 1)
 
-                if first:
-                    if left:
+                    if first:
+                        if left:
+                            length = self.MAX_MSG_LEN if last_message['type'] == 'text' else self.MAX_CAP_LEN
+                            left, overflow = self.summarize(left, length, self.get_string('read-more'))
+                            last_message['text'] += '\n'+left
+                            if right and not overflow:
+                                msg = {
+                                    'type': 'image',
+                                    'src': img['src'],
+                                    'text': '',
+                                    'markup': []
+                                }
+                                if img_link:
+                                    msg['markup'] = [[InlineKeyboardButton(self.get_string('image-link'), img_link)]]
+                                messages.append(msg)
+                        else:
+                            last_message['type'] = 'image'
+                            last_message['src'] = img['src']
+                            if img_link:
+                                last_message['markup'] = [[InlineKeyboardButton(self.get_string('image-link'), img_link)]]
+                        first = False
+                    else:
                         length = self.MAX_MSG_LEN if last_message['type'] == 'text' else self.MAX_CAP_LEN
                         left, overflow = self.summarize(left, length, self.get_string('read-more'))
-                        last_message['text'] += '\n'+left
+                        last_message['text'] += left
                         if right and not overflow:
                             msg = {
                                 'type': 'image',
@@ -325,37 +360,19 @@ class BotHandler:
                                 'text': '',
                                 'markup': []
                             }
-                            if link:
-                                msg['markup'] = [[InlineKeyboardButton(self.get_string('image-link'), link)]]
+                            if img_link:
+                                msg['markup'] = [[InlineKeyboardButton(self.get_string('image-link'), img_link)]]
                             messages.append(msg)
-                    else:
-                        last_message['type'] = 'image'
-                        last_message['src'] = img['src']
-                        if link:
-                            last_message['markup'] = [[InlineKeyboardButton(self.get_string('image-link'), link)]]
-                    first = False
-                else:
-                    length = self.MAX_MSG_LEN if last_message['type'] == 'text' else self.MAX_CAP_LEN
-                    left, overflow = self.summarize(left, length, self.get_string('read-more'))
-                    last_message['text'] += left
-                    if right and not overflow:
-                        msg = {
-                            'type': 'image',
-                            'src': img['src'],
-                            'text': '',
-                            'markup': []
-                        }
-                        if link:
-                            msg['markup'] = [[InlineKeyboardButton(self.get_string('image-link'), link)]]
-                        messages.append(msg)
-                if overflow:
-                    break
-            #End for img
-            if not overflow:
-                length = self.MAX_MSG_LEN if messages[-1]['type'] == 'text' else self.MAX_CAP_LEN
-                right, overflow = self.summarize(right, length, self.get_string('read-more'))
-                messages[-1]['text'] += right
-            messages[-1]['markup'].append([InlineKeyboardButton(self.get_string('goto-post'), link)])
+                    if overflow:
+                        break
+                #End for img
+                if not overflow:
+                    length = self.MAX_MSG_LEN if messages[-1]['type'] == 'text' else self.MAX_CAP_LEN
+                    right, overflow = self.summarize(right, length, self.get_string('read-more'))
+                    messages[-1]['text'] += right
+                
+            if post_link:
+                messages[-1]['markup'].append([InlineKeyboardButton(self.get_string('goto-post'), post_link)])
         return messages
 
     def send_feed(self, messages, chats):
@@ -369,7 +386,8 @@ class BotHandler:
                                 chat_id,
                                 msg['text'],
                                 parse_mode = ParseMode.HTML,
-                                reply_markup = InlineKeyboardMarkup(msg['markup']) if msg['markup'] else None
+                                reply_markup = InlineKeyboardMarkup(msg['markup']) if msg['markup'] else None,
+                                disable_web_page_preview = True
                             )
                         elif msg['type'] == 'image':
                             if msg['text'] == '':
@@ -379,20 +397,16 @@ class BotHandler:
                                 msg['src'],
                                 msg['text'],
                                 parse_mode = ParseMode.HTML,
-                                reply_markup = InlineKeyboardMarkup(msg['markup']) if msg['markup'] else None
+                                reply_markup = InlineKeyboardMarkup(msg['markup']) if msg['markup'] else None,
+                                disable_web_page_preview = True
                             )
                     except Unauthorized as e:
                         self.log_bug(e,'handled an exception while sending a feed to a user. removing chat', report=False, chat_id = chat_id, chat_data = chat_data)
-                        try:
-                            with self.env.begin(self.chats_db, write = True) as txn:
-                                txn.delete(str(chat_id).encode())
-                        except Exception as e2:
-                            self.log_bug(e2,'exception while trying to remove chat')
-                            remove_ids.append(chat_id)
+                        remove_ids.append(chat_id)
+                        break
                     except Exception as e:
                         self.log_bug(e, 'Exception while sending a feed to a user', message = msg, chat_id = chat_id, chat_data = chat_data)
                         break
-
         except Exception as e:
             self.log_bug(e,'Exception while trying to send feed', messages = messages)
 
@@ -413,11 +427,7 @@ class BotHandler:
             if not last_date or last_date < feed_date:  # if last_date not exist or last feed's date is older than the new one
                 self.set_data('last-feed-date', feed_date, DB = self.data_db)
             if last_date and last_date < feed_date:
-                messages = self.render_feed(
-                    title=feed['title'],
-                    link= feed['link'],
-                    content= feed['content'],
-                    header= self.get_string('new-feed'))
+                messages = self.render_feed(feed, header= self.get_string('new-feed'))
                 self.send_feed(messages, self.iter_all_chats())
         if self.__check:
             self.check_thread = Timer(self.interval, self.check_new_feed)
