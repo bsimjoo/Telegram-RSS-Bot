@@ -37,7 +37,7 @@ def HandlerDecorator (handlerClass,**kwargs):
         return handlerClass(callback = func, **kwargs)
     return decorator_handler
 
-def MessageHandlerDecorator(self,filters = Filters.all, group=1, **kwargs):
+def MessageHandlerDecorator(filters = Filters.all, group=1, **kwargs):
     def decorator_message(func):
         return MessageHandler(filters, func, kwargs)
     return decorator_message
@@ -119,9 +119,9 @@ class ConversationDecorator:
         self.fallbacks = []
         self.__kwargs = kwargs
     
-    def state(self, *states):
+    def state(self, *_states):
         def decorator_state(handler:Handler):
-            for state in states:
+            for state in _states:
                 if not state in self.states:
                     self.states[state] = []
                 self.states[state].append(handler)
