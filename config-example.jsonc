@@ -39,16 +39,16 @@
     // bug-reporter config (check https://github.com/bsimjoo/Telegram-RSS-Bot/blob/main/docs/configuration-guide.md)
     "bug-reporter": "off",
     // OFFLINE-MODE:
-    //bug-reporter: { "bugs-file": "bugs.json" },
+    //"bug-reporter": { "bugs-file": "bugs.json" },
     // ONLINE-MODE:
-    //bug-reporter: { 
+    //"bug-reporter": { 
     //    "bugs-file": "bugs.json",
     //    "http-config": {
     //        // CHERRYPY CONFIG
-    //        "server.socket_host" = "0.0.0.0"
-    //        "server.socket_port" = 7191
-    //        "log.screen" = false
+    //        "server.socket_host": "0.0.0.0",
+    //        "server.socket_port": 7191,
+    //        "log.screen": false
     //    }
-    //}
+    //},
     "db-path": "db.lmdb"
 }
