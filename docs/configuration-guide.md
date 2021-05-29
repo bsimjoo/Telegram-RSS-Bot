@@ -99,7 +99,7 @@ Bug-reporter module counts exceptions and report them in a json or on a http ser
     "bugs-file": "bugs.json",
     "use-git": true,
     "git-path": "/usr/bin/git",
-    "git-source": "https://github.com/bsimjoo/Telegram-RSS-Bot"
+    "git-source": "https://github.com/bsimjoo/Telegram-RSS-Bot",
     "http-config":{
       // CHERRYPY CONFIG
       "server.socket_host": "0.0.0.0",
