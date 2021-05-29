@@ -94,7 +94,7 @@ Bug-reporter module counts exceptions and report them in a json or on a http ser
   }
   ```
 - online:
-  ```json
+  ```jsonc
   "bug-reporter":{
     "bugs-file": "bugs.json",
     "use-git": true,
