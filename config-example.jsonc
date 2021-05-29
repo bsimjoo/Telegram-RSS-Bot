@@ -38,9 +38,9 @@
     "log-level": "info",
     "log-file": null,   //set a file for log to redirect logs to file
     // bug-reporter config (check https://github.com/bsimjoo/Telegram-RSS-Bot/blob/main/docs/configuration-guide.md)
-    "bug-reporter": "off",
+    "bug-reporter": "off"
     // OFFLINE-MODE:
-    //"bug-reporter": { "bugs-file": "bugs.json" },
+    //"bug-reporter": { "bugs-file": "bugs.json" }
     // ONLINE-MODE:
     //"bug-reporter": { 
     //    "bugs-file": "bugs.json",
@@ -50,6 +50,5 @@
     //        "server.socket_port": 7191,
     //        "log.screen": false
     //    }
-    //},
-    "db-path": "db.lmdb"
+    //}
 }
