@@ -53,17 +53,11 @@ python3 -m pip install {--user} -r requirements.txt
 
 *`--user` flag is optional and may needed in some situation*
 ## :gear: Configuration
-Read [docs/Configuration-guide.md](docs/configuration-guide.md)
+Copy default configuration example [config-example.jsonc](config-example.jsonc) to `user-config.jsonc` and do configuration. Read [docs/Configuration-guide.md](docs/configuration-guide.md)
 
-Copy default configuration example [config-example.conf](config-example.conf) to `user-config.conf` and add token to config file under `main` section
-```config
-[main]
-token = {your bot token}
-```
-
-**Note** that `config-example.conf` may be updated, so check for changes to each update. `user-config.conf` is ignored by git to prevent git pull problems
+**Note** that `config-example.jsonc` may be updated, so check for changes in each update. `user-config.jsonc` and also `user-config.conf` for older versions are ignored by git to prevent git problems but new versions may need new configurations, so keep configurations up to date.
 ## :running: Run server
-use `python main.py` to run server, you can also run server with a new config file with `python main.py -c {config file path}` (Default configurations are `user-config.conf` or `config-example.conf`).
+use `python main.py` to run server, you can also run server with a new config file with `python main.py -c {config file path}` (Default configurations are `user-config.jsonc` if exists, else `config-example.jsonc`).
 run `python main.py -h` to get help about available arguments.
 
 # :busts_in_silhouette: Access levels
