@@ -330,8 +330,7 @@ class BotHandler:
                     if img.parent.name == 'a':
                         split_by = str(img.parent)
                         img_link = img.parent['href']
-                    if right:
-                        left, right = right.split(split_by, 1)
+                    left, right = right.split(split_by, 1)
 
                     if first:
                         if left:
