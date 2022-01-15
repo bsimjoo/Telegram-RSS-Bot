@@ -430,7 +430,7 @@ class BotHandler:
             feed_date = parse_date(feed['date'])
             if not last_date or last_date < feed_date:  # if last_date not exist or last feed's date is older than the new one
                 self.set_data('last-feed-date', feed_date, DB = self.data_db)
-            if last_date and last_date < feed_date:
+            if True:
                 messages = self.render_feed(feed, header= self.get_string('new-feed'))
                 self.send_feed(messages, self.iter_all_chats())
         if self.__check:
@@ -448,7 +448,7 @@ class BotHandler:
         else:
             return data
 
-    def set_data(self, key, value, over_write = True, DB = None, do = lambda data: pickle.dumps(data)):
+    def set_data(self, key, value, DB = None, over_write = True, do = lambda data: pickle.dumps(data)):
         DB = DB if DB else self.chats_db
         if not callable(do):
             do = lambda data: data

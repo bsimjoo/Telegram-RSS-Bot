@@ -191,12 +191,12 @@ def add_admin_handlers(server: BotHandler):
             if c.args[0].isdigit():
                 server.interval = int(c.args[0])
                 server.set_data(
-                    'interval', server.interval, server.data_db)
+                    'interval', server.interval, DB = server.data_db)
                 u.message.reply_text(
                     '✅ Interval changed to'+str(server.interval))
-                return
-        u.message.reply_markdown_v2(
-            '❌ Bad command, use `/set_interval {new interval in seconds}`')
+        else:
+            u.message.reply_markdown_v2(
+                '❌ Bad command, use `/set_interval {new interval in seconds}`')
 
     def add_keyboard(c: CallbackContext):
         'A function that create keyboard that needed in send_all conversation'
