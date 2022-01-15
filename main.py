@@ -16,6 +16,7 @@ from threading import Timer
 from urllib.request import urlopen
 import lmdb
 from bs4 import BeautifulSoup as Soup
+from bs4 import Comment
 from dateutil.parser import parse as parse_date
 from telegram import (InlineKeyboardButton, InlineKeyboardMarkup,ParseMode)
 from telegram.error import Unauthorized
@@ -180,6 +181,9 @@ class BotHandler:
         pattern = r'</?(?!(?:%s)\b)\w+[^>]*/?>'%tags
         purge = re.compile(pattern).sub      #This regex will purge any unsupported tag
         soup = Soup(purge('', html), 'html.parser')
+        comments = soup.findAll(text=lambda text:isinstance(text, Comment))
+        for c in comments:
+            c.extract()
         for tag in soup.descendants:
             #Remove any unsupported attribute
             if tag.name in self.SUPPORTED_TAG_ATTRS:
@@ -527,7 +531,7 @@ if __name__ == '__main__':
     strings = None
     for file, language in checks:
         if os.path.exists(file):
-            with open(file) as f:
+            with open(file,encoding='utf8') as f:
                 strings = commentjson.load(f)
             if language in strings:
                 strings = strings[language]
