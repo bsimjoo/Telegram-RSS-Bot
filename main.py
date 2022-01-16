@@ -1,5 +1,6 @@
 import argparse
 import html
+from xml.sax.handler import feature_external_ges
 import bs4
 import commentjson
 import logging
@@ -246,12 +247,8 @@ class BotHandler:
         
         soup_page = Soup(feeds_page, self.feed_configs.get('feed-format', 'xml'))
         feeds_list = soup_page.select(self.feed_configs['feeds-selector'])
-        if 0<index<len(feeds_list):
-            feeds_list = feeds_list[index:]
         title, link, content, date = None, None, None, None
-        i=-1
-        for feed in feeds_list:
-            i+=1
+        for feed in feeds_list[index:]:
             try:
                 if self.__skip_field == 'feed':
                     if self.__skip(feed):
@@ -274,24 +271,22 @@ class BotHandler:
                 
                 content_selector = self.feed_configs['content-selector']
                 if content_selector:
-                    content = Soup(self.__get_content(feed.select(content_selector)[0]))
+                    content = Soup(self.__get_content(feed.select(content_selector)[0]),features="lxml")
 
                     if self.__skip_field == 'content':
                         if self.__skip(content):
                             continue
                 
-                break
             except Exception as e:
                 self.log_bug(e,'Exception while reading feed', feed = str(feed))
                 break
         
-        return {
-            'title': title,
-            'link': link,
-            'content': content,
-            'date': date,
-            'index': i+index
-            }
+            yield {
+                'title': title,
+                'link': link,
+                'content': content,
+                'date': date
+                }
 
     def render_feed(self, feed: dict, header: str):
         title = feed['title']
@@ -308,35 +303,56 @@ class BotHandler:
                 title = f'<a href="{post_link}">{title}</a>'
             messages[0]['text']+=title
         overflow = False
-        if content:
-            #Remove elements with selector
-            remove_elem = self.feed_configs.get('remove-elements')
-            if remove_elem:
-                for elem in content.select():
-                    elem.replace_with('')
-            content = self.purge(content)
-            images = content.find_all('img')
-            first = True
+        try:
+            if content:
+                #Remove elements with selector
+                remove_elem = self.feed_configs.get('remove-elements')
+                if remove_elem:
+                    for elem in content.select():
+                        elem.replace_with('')
+                content = self.purge(content)
+                images = content.find_all('img')
+                first = True
 
-            if not len(images):
-                content, overflow = self.summarize(content, self.MAX_MSG_LEN, self.get_string('read-more'))
-                messages[0]['text'] += '\n'+content
-            else:
-                left, img_link, right = None, None, content
-                
-                for img in images:
-                    last_message = messages[-1]
-                    split_by = str(img)
-                    if img.parent.name == 'a':
-                        split_by = str(img.parent)
-                        img_link = img.parent['href']
-                    left, right = right.split(split_by, 1)
+                if not len(images):
+                    content, overflow = self.summarize(content, self.MAX_MSG_LEN, self.get_string('read-more'))
+                    messages[0]['text'] += '\n'+content
+                else:
+                    left, img_link, right = None, None, content
+                    
+                    for img in images:
+                        last_message = messages[-1]
+                        split_by = str(img)
+                        if img.parent.name == 'a':
+                            split_by = str(img.parent)
+                            img_link = img.parent['href']
+                        left, right = right.split(split_by, 1)
 
-                    if first:
-                        if left:
+                        if first:
+                            if left:
+                                length = self.MAX_MSG_LEN if last_message['type'] == 'text' else self.MAX_CAP_LEN
+                                left, overflow = self.summarize(left, length, self.get_string('read-more'))
+                                last_message['text'] += '\n'+left
+                                if right and not overflow:
+                                    msg = {
+                                        'type': 'image',
+                                        'src': img['src'],
+                                        'text': '',
+                                        'markup': []
+                                    }
+                                    if img_link:
+                                        msg['markup'] = [[InlineKeyboardButton(self.get_string('image-link'), img_link)]]
+                                    messages.append(msg)
+                            else:
+                                last_message['type'] = 'image'
+                                last_message['src'] = img['src']
+                                if img_link:
+                                    last_message['markup'] = [[InlineKeyboardButton(self.get_string('image-link'), img_link)]]
+                            first = False
+                        else:
                             length = self.MAX_MSG_LEN if last_message['type'] == 'text' else self.MAX_CAP_LEN
                             left, overflow = self.summarize(left, length, self.get_string('read-more'))
-                            last_message['text'] += '\n'+left
+                            last_message['text'] += left
                             if right and not overflow:
                                 msg = {
                                     'type': 'image',
@@ -347,40 +363,23 @@ class BotHandler:
                                 if img_link:
                                     msg['markup'] = [[InlineKeyboardButton(self.get_string('image-link'), img_link)]]
                                 messages.append(msg)
-                        else:
-                            last_message['type'] = 'image'
-                            last_message['src'] = img['src']
-                            if img_link:
-                                last_message['markup'] = [[InlineKeyboardButton(self.get_string('image-link'), img_link)]]
-                        first = False
-                    else:
-                        length = self.MAX_MSG_LEN if last_message['type'] == 'text' else self.MAX_CAP_LEN
-                        left, overflow = self.summarize(left, length, self.get_string('read-more'))
-                        last_message['text'] += left
-                        if right and not overflow:
-                            msg = {
-                                'type': 'image',
-                                'src': img['src'],
-                                'text': '',
-                                'markup': []
-                            }
-                            if img_link:
-                                msg['markup'] = [[InlineKeyboardButton(self.get_string('image-link'), img_link)]]
-                            messages.append(msg)
-                    if overflow:
-                        break
-                #End for img
-                if not overflow:
-                    length = self.MAX_MSG_LEN if messages[-1]['type'] == 'text' else self.MAX_CAP_LEN
-                    right, overflow = self.summarize(right, length, self.get_string('read-more'))
-                    messages[-1]['text'] += right
-                
-            if post_link:
-                messages[-1]['markup'].append([InlineKeyboardButton(self.get_string('goto-post'), post_link)])
-        return messages
+                        if overflow:
+                            break
+                    #End for img
+                    if not overflow:
+                        length = self.MAX_MSG_LEN if messages[-1]['type'] == 'text' else self.MAX_CAP_LEN
+                        right, overflow = self.summarize(right, length, self.get_string('read-more'))
+                        messages[-1]['text'] += right
+                    
+                if post_link:
+                    messages[-1]['markup'].append([InlineKeyboardButton(self.get_string('goto-post'), post_link)])
+            return messages
+        except Exception as e:
+            self.log_bug(e,'Exception while rendering feed', feed = str(feed), messages = str(messages))
+            return None
 
     def send_feed(self, messages, chats):
-        remove_ids = [] #Delete IDs that are no longer available
+        deathlist = [] #Delete IDs that are no longer available
         try:
             for chat_id, chat_data in chats:
                 for msg in messages:
@@ -406,7 +405,7 @@ class BotHandler:
                             )
                     except Unauthorized as e:
                         self.log_bug(e,'handled an exception while sending a feed to a user. removing chat', report=False, chat_id = chat_id, chat_data = chat_data)
-                        remove_ids.append(chat_id)
+                        deathlist.append(chat_id)
                         break
                     except Exception as e:
                         self.log_bug(e, 'Exception while sending a feed to a user', message = msg, chat_id = chat_id, chat_data = chat_data)
@@ -414,25 +413,36 @@ class BotHandler:
         except Exception as e:
             self.log_bug(e,'Exception while trying to send feed', messages = messages)
 
-        for chat_id in remove_ids:
+        for chat_id in deathlist:
             with self.env.begin(self.chats_db, write = True) as txn:
                 txn.delete(str(chat_id).encode())
 
     def iter_all_chats(self):
+        deathlist = []
         with env.begin(self.chats_db) as txn:
             for key, value in txn.cursor():
-                yield key.decode(), pickle.loads(value)
+                data = pickle.loads(value)
+                if not isinstance(data,dict):
+                    deathlist.append(key)
+                    self.log_bug(ValueError('chat data is not a dict'), 'chat data is not a dict', data = data, deleted = deleted)
+                    continue
+                yield key.decode(), data
+        with env.begin(self.chats_db, write = True) as txn:
+            for key in deathlist:
+                txn.delete(key.encode())
 
     def check_new_feed(self):
-        feed = self.read_feed(0)    #read last feed
-        if feed:
-            last_date = self.get_data('last-feed-date', DB = self.data_db)
+        last_date = self.get_data('last-feed-date', DB = self.data_db)
+        skip_date_check = not self.feed_configs.get('check-date',True)
+        for feed in self.read_feed():
             feed_date = parse_date(feed['date'])
             if not last_date or last_date < feed_date:  # if last_date not exist or last feed's date is older than the new one
                 self.set_data('last-feed-date', feed_date, DB = self.data_db)
-            if True:
+            if skip_date_check or (last_date and last_date < feed_date):
                 messages = self.render_feed(feed, header= self.get_string('new-feed'))
                 self.send_feed(messages, self.iter_all_chats())
+                if skip_date_check:
+                    break   #just send last feed
         if self.__check:
             self.check_thread = Timer(self.interval, self.check_new_feed)
             self.check_thread.start()
@@ -469,6 +479,7 @@ class BotHandler:
         self.__check = False
         self.check_thread.cancel()
         if self.check_thread.is_alive():
+            print('waiting for check thread to finish')
             self.check_thread.join()
 
 
@@ -493,7 +504,7 @@ if __name__ == '__main__':
 
     token = config.get('token')
     if not token:
-        logging.error("No Token, exiting")
+        logging.error("No Token, terminating")
         sys.exit()
     
     log_file_name = config.get('log-file')
@@ -508,7 +519,7 @@ if __name__ == '__main__':
     if args.reset:
         answer = input(f'Are you sure you want to Reset all "{args.reset}"?(yes | anything else means no)')
         if answer != 'yes':
-            exit()
+            print('canceled')
         else:
             if args.reset in ('data', 'all'):
                 with env.begin(data_db, write=True) as txn:
@@ -518,6 +529,7 @@ if __name__ == '__main__':
                 with env.begin(chats_db, write=True) as txn:
                     d=env.open_db()
                     txn.drop(d)
+            print('Reset done. now you can run the bot again')
             sys.exit()
 
     language = config.get('language','en-us')
@@ -588,8 +600,6 @@ if __name__ == '__main__':
     proxy_info = None
     if use_proxy:
         proxy_info = config.get('proxy-info')
-
-    feed_configs = config['feed-configs']
 
     bot_handler = BotHandler(token, config.get('feed-configs'), env, chats_db, data_db, strings, bug_reporter_config != 'off', debug, proxy_info)
     bot_handler.run()
