@@ -251,7 +251,7 @@ class BotHandler:
         soup_page = Soup(feeds_page, self.feed_configs.get('feed-format', 'xml'))
         feeds_list = soup_page.select(self.feed_configs['feeds-selector'])
         title, link, content, time = None, None, None, None
-        for feed in feeds_list[index:]:
+        for feed in feeds_list[index::-1]:
             try:
                 if self.__skip_field == 'feed':
                     if self.__skip(feed):
