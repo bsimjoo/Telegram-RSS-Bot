@@ -791,7 +791,7 @@ def add_users_handlers(server: BotHandler):
                 return
         server.send_feed(
             server.render_feed(
-                server.read_feed(0),
+                next(server.read_feed(0)),
                 server.get_string('last-feed')
             ),
             chats = [(u.effective_chat.id, c.chat_data)])
