@@ -424,7 +424,7 @@ class BotHandler:
                 data = pickle.loads(value)
                 if not isinstance(data,dict):
                     deathlist.append(key)
-                    self.log_bug(ValueError('chat data is not a dict'), 'chat data is not a dict', data = data, deleted = deleted)
+                    self.log_bug(ValueError('chat data is not a dict'), 'chat data is not a dict', data = data)
                     continue
                 yield key.decode(), data
         with env.begin(self.chats_db, write = True) as txn:
