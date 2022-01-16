@@ -179,7 +179,7 @@ def add_admin_handlers(server: BotHandler):
     def send_feed_toall(u: Update, c: CallbackContext):
         server.send_feed(
             server.render_feed(
-                server.read_feed(0),
+                next(server.read_feed()),
                 server.get_string('last-feed')
             ),
             server.iter_all_chats())

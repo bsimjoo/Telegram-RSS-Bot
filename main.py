@@ -159,7 +159,7 @@ class BotHandler:
             msg+='\n\nExtra info'
             for key, value in args.items():
                 message+=f'\n<pre>{key} = {html.escape(commentjson.dumps(value, indent = 2, ensure_ascii = False))}</pre>'
-                msg+=f'\n{key} = {commentjson.dumps(value, indent = 2, ensure_ascii = False)}'
+                msg+=f'\n{key} = {commentjson.dumps(value, indent = 2, ensure_ascii = False, default=str)}'
         
         if len(message)<=self.MAX_MSG_LEN:
             self.bot.send_message(chat_id = self.ownerID, text = str(message), parse_mode = ParseMode.HTML, disable_notification = disable_notification)
