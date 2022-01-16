@@ -14,21 +14,27 @@
         //}
     },
     "feed-configs":{
-        "source": "https://pcworms.blog.ir/rss",
+        "source": "https://pcworms.ir/rss",
         "parse": "xml",
         // FEEDS TEMPLATE: (set null to skip that property)
         //   feeds-selector: css-selector for each feed item
-        //   time-selector: css-selector for date of feed
+        //   time-selector: css-selector for time of feed
+        //   time-attribute: if time stored in attribute, specify it here
         //   link-selector: css-selector for link of post
+        //   link-attribute: if link stored in attribute, specify it here
         //   title-selector: css-selector for title of a feed
+        //   title-attribute: if title stored in attribute, specify it here
         //   content-selector: css-selector for content of feed
         //   feed-skip-condition: define a condition to skip a feed
-        //      format: feed/css-selector, content/css-selector, title/regex
+        //      format: feed/css-selector, content/css-selector, title/regex, link/regex
         //   remove-elements-selector: hide any element that match this css-selector
         "feeds-selector": "item",
-        "date-selector": "pubDate",
+        "time-selector": "pubDate",
+        "time-attribute": null,
         "link-selector": "link",
+        "link-attribute": null,
         "title-selector": "title",
+        "title-attribute": null,
         "content-selector": "description",
         "feed-skip-condition": "content/[name=\"skip\"]",
         "remove-elements-selector": ".skip"

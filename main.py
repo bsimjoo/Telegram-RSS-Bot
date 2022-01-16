@@ -125,7 +125,7 @@ class BotHandler:
         # - link-selector: how to get link of source
         # - content-selector: how to get content
         # - skip-condition: how to check skip condition
-        #   - format: feed/{selector}, content/{selector}, title/{regex}, none
+        #   - format: feed/{selector}, content/{selector}, title/{regex}, link/{regex}, none
 
         self.__skip = lambda feed: False
         skip_condition = feed_configs.get('feed-skip-condition')
@@ -138,6 +138,9 @@ class BotHandler:
             elif self.__skip_field == 'title':
                 match = re.compile(skip_condition).match
                 self.__skip = lambda title: bool(match(title))
+            elif self.__skip_field == 'link':
+                match = re.compile(skip_condition).match
+                self.__skip = lambda link: bool(match(link))
 
     def log_bug(self, exc:Exception, msg='', report = True, disable_notification = False,**args):
         info = BugReporter.exception(msg, exc, report = self.bug_reporter and report)
@@ -247,7 +250,7 @@ class BotHandler:
         
         soup_page = Soup(feeds_page, self.feed_configs.get('feed-format', 'xml'))
         feeds_list = soup_page.select(self.feed_configs['feeds-selector'])
-        title, link, content, date = None, None, None, None
+        title, link, content, time = None, None, None, None
         for feed in feeds_list[index:]:
             try:
                 if self.__skip_field == 'feed':
@@ -257,7 +260,10 @@ class BotHandler:
                 title_selector = self.feed_configs['title-selector']
                 if title_selector:
                     # title-selector could be None (null)
-                    title = str(feed.select(title_selector)[0].text)
+                    if self.feed_configs['title-attribute']:
+                        title = str(feed.select_one(title_selector).attrs[self.feed_configs['title-attribute']])
+                    else:
+                        title = str(feed.select_one(title_selector).text)
 
                     if self.__skip_field == 'title':
                         if self.__skip(title):
@@ -265,9 +271,23 @@ class BotHandler:
 
                 link_selector = self.feed_configs['link-selector']
                 if link_selector:
-                    link = str(feed.select(link_selector)[0].text)
+                    # link-selector could be None (null)
+                    if self.feed_configs['link-attribute']:
+                        link = str(feed.select_one(link_selector).attrs[self.feed_configs['link-attribute']])
+                    else:
+                        link = str(feed.select_one(link_selector).text)
 
-                date = str(feed.select(self.feed_configs['date-selector'])[0].text)
+                    if self.__skip_field == 'link':
+                        if self.__skip(link):
+                            continue
+                
+                time_selector = self.feed_configs['time-selector']
+                if time_selector:
+                    # date-selector could be None (null)
+                    if self.feed_configs['time-attribute']:
+                        time = str(feed.select_one(time_selector).attrs[self.feed_configs['time-attribute']])
+                    else:
+                        time = str(feed.select_one(time_selector).text)
                 
                 content_selector = self.feed_configs['content-selector']
                 if content_selector:
@@ -285,7 +305,7 @@ class BotHandler:
                 'title': title,
                 'link': link,
                 'content': content,
-                'date': date
+                'date': time
                 }
 
     def render_feed(self, feed: dict, header: str):
@@ -433,15 +453,14 @@ class BotHandler:
 
     def check_new_feed(self):
         last_date = self.get_data('last-feed-date', DB = self.data_db)
-        skip_date_check = not self.feed_configs.get('check-date',True)
         for feed in self.read_feed():
             feed_date = parse_date(feed['date'])
-            if not last_date or last_date < feed_date:  # if last_date not exist or last feed's date is older than the new one
+            if feed_date and (not last_date or last_date < feed_date):  # if feed_date is not None and last_date not exist or last feed's date is older than the new one
                 self.set_data('last-feed-date', feed_date, DB = self.data_db)
-            if skip_date_check or (last_date and last_date < feed_date):
+            if not feed_date or (last_date and last_date < feed_date):
                 messages = self.render_feed(feed, header= self.get_string('new-feed'))
                 self.send_feed(messages, self.iter_all_chats())
-                if skip_date_check:
+                if not feed_date or not last_date:
                     break   #just send last feed
         if self.__check:
             self.check_thread = Timer(self.interval, self.check_new_feed)
