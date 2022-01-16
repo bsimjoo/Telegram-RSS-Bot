@@ -191,6 +191,8 @@ def add_admin_handlers(server: BotHandler):
         if len(c.args) == 1:
             if c.args[0].isdigit():
                 server.interval = int(c.args[0])
+                u.message.reply_text(
+                    '✅ Interval changed to '+str(server.interval))
                 server.check_thread.cancel()
                 if server.check_thread.is_alive():
                     server.check_thread.join()
@@ -198,8 +200,6 @@ def add_admin_handlers(server: BotHandler):
                 server.check_thread.start()
                 server.set_data(
                     'interval', server.interval, DB = server.data_db)
-                u.message.reply_text(
-                    '✅ Interval changed to'+str(server.interval))
         else:
             u.message.reply_markdown_v2(
                 '❌ Bad command, use `/set_interval {new interval in seconds}`')
