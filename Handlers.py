@@ -98,9 +98,9 @@ def add_debuging_handlers(server: BotHandler):
     def log_update(u: Update, c: CallbackContext):
         message = (
             'Received a new update event from telegram\n'
-            f'update = {json.dumps(u.to_dict(), indent = 2, ensure_ascii = False)}\n'
-            f'user_data = {json.dumps(c.user_data, indent = 2, ensure_ascii = False)}\n'
-            f'chat_data = {json.dumps(c.chat_data, indent = 2, ensure_ascii = False)}'
+            f'update = {json.dumps(u.to_dict(), indent = 2, ensure_ascii = False, default=str)}\n'
+            f'user_data = {json.dumps(c.user_data, indent = 2, ensure_ascii = False, default=str)}\n'
+            f'chat_data = {json.dumps(c.chat_data, indent = 2, ensure_ascii = False, default=str)}'
         )
         logging.info(message)
         if server.debug:
