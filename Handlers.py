@@ -191,6 +191,9 @@ def add_admin_handlers(server: BotHandler):
         if len(c.args) == 1:
             if c.args[0].isdigit():
                 server.interval = int(c.args[0])
+                self.check_thread.cancel()
+                if self.check_thread.is_alive():
+                    self.check_thread.join()
                 server.check_thread = Timer(server.interval, server.check_new_feed)
                 server.check_thread.start()
                 server.set_data(
