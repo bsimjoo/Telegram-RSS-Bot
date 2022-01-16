@@ -459,7 +459,7 @@ class BotHandler:
                 self.set_data('last-feed-date', feed_date, DB = self.data_db)
                 latest_date = feed_date
             if feed_date is None or (last_date is not None and last_date < feed_date):
-                messages = self.render_feed(feed, header= self.get_string('new-feed')+f'\nlast_date: {last_date}\nfeed_date: {feed_date}')
+                messages = self.render_feed(feed, header= self.get_string('new-feed'))
                 self.send_feed(messages, self.iter_all_chats())
                 if feed_date is None or last_date is None:
                     break   #just send last feed
