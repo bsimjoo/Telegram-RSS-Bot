@@ -4,6 +4,7 @@ import logging
 import pickle
 import random
 import string
+from threading import Timer
 import BugReporter
 from datetime import datetime, timedelta
 
@@ -190,6 +191,8 @@ def add_admin_handlers(server: BotHandler):
         if len(c.args) == 1:
             if c.args[0].isdigit():
                 server.interval = int(c.args[0])
+                server.check_thread = Timer(server.interval, server.check_new_feed)
+                server.check_thread.start()
                 server.set_data(
                     'interval', server.interval, DB = server.data_db)
                 u.message.reply_text(
