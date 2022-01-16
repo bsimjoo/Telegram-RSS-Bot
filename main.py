@@ -176,7 +176,7 @@ class BotHandler:
         else:
             return ''.join([str(c) for c in tag.contents])
 
-    def purge(self, html, images=True):
+    def purge(self, html, images=True) -> Soup:
         tags = self.SUPPORTED_HTML_TAGS
         if images:
             tags+='|img'
@@ -338,7 +338,7 @@ class BotHandler:
                     content, overflow = self.summarize(content, self.MAX_MSG_LEN, self.get_string('read-more'))
                     messages[0]['text'] += '\n'+content
                 else:
-                    left, img_link, right = None, None, content
+                    left, img_link, right = None, None, str(content)
                     
                     for img in images:
                         last_message = messages[-1]
