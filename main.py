@@ -203,29 +203,29 @@ class BotHandler:
         with urlopen(self.feed_configs['source']) as f:
             return f.read().decode('utf-8')
 
-    def summarize(self, soup:Soup, length, read_more):
-        offset = len(read_more)
+    def summarize(self, soup:Soup, max_length, read_more):
+        trim = len(read_more)
         len_ = len(str(soup))
-        if len_>length:
-            offset += len_ - length
+        if len_>max_length:
+            trim += len_ - max_length
             removed = 0
             for element in reversed(list(soup.descendants)):
-                if (not element.name) and len(str(element))>offset-removed:
+                if (not element.name) and len(str(element))>trim-removed:
                     s = str(element)
-                    wrap_index = s.rfind(' ',0 , offset-removed)
+                    wrap_index = s.rfind(' ',0 , trim-removed)
                     if wrap_index == -1:
-                        element.replace_with(s[:-offset+removed])
-                        removed = offset
+                        element.replace_with(s[:-trim+removed])
+                        removed = trim
                     else:
                         element.replace_with(s[:wrap_index])
-                    removed = offset
+                    removed = trim
                 else:
                     element.replace_with('')
                     removed += len(str(element))
-                if removed >= offset:
+                if removed >= trim:
                     break
             soup.append(read_more)
-        return str(soup), len_>length
+        return str(soup), len_>max_length
 
     # in this version fead reader uses css selector to get feeds.
     # 
@@ -251,7 +251,7 @@ class BotHandler:
         soup_page = Soup(feeds_page, self.feed_configs.get('feed-format', 'xml'))
         feeds_list = soup_page.select(self.feed_configs['feeds-selector'])
         title, link, content, time = None, None, None, None
-        for feed in feeds_list[index::-1]:
+        for feed in feeds_list[index:]:
             try:
                 if self.__skip_field == 'feed':
                     if self.__skip(feed):
@@ -326,10 +326,10 @@ class BotHandler:
         try:
             if content:
                 #Remove elements with selector
-                remove_elem = self.feed_configs.get('remove-elements')
-                if remove_elem:
-                    for elem in content.select():
-                        elem.replace_with('')
+                remove_elem = self.feed_configs.get('remove-elements',[])
+                for elem in remove_elem:
+                    for e in content.select(elem):
+                        e.extract()
                 content = self.purge(content)
                 images = content.find_all('img')
                 first = True
