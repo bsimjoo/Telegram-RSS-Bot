@@ -41,12 +41,15 @@ Specify format of feeds. Telegram-RSS-Bot uses BeautifulSoup to read feeds, so v
 Telegram-RSS-Bot uses CSS-Selector to find feeds and read them.
 
 - feeds-selector: css-selector for each feed
-- date-selector: date of feed.
+- time-selector: time of feed.
+- time-attribute: if time stored in attribute, specify it here
 - link-selector: selector of feed link. could be null.
+- link-attribute: if link stored in attribute, specify it here
 - title-selector: selector for feed title
+- title-attribute: if title stored in attribute, specify it here
 - content-selector: feed contents; the main caption.
 - feed-skip-condition: a condition to skip a feed. if selector had a result Bot will skip that post.
-  - format: title/REGEX, feed/CSS-SELECTOR, content/CSS-SELECTOR",
+  - format: title/REGEX, feed/CSS-SELECTOR, content/CSS-SELECTOR", link/REGEX
 - remove-elements-selector: this elements won't be in message.
 
 ### language
