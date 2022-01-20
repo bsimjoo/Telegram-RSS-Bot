@@ -26,7 +26,6 @@
         //   title-attribute: if title stored in attribute, specify it here
         //   content-selector: css-selector for content of feed
         //   feed-skip-condition: define a condition to skip a feed
-        //      format: feed/css-selector, content/css-selector, title/regex, link/regex
         //   remove-elements-selector: hide any element that match this css-selector
         "feeds-selector": "item",
         "time-selector": "pubDate",
