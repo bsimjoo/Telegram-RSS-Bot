@@ -116,6 +116,7 @@ If you're about to reset database you can use `-r {database}` argument to reset 
 
 # :beetle: Bug Reporter
 ![](https://img.shields.io/badge/dynamic/json?url=http://de1.hashbang.sh:7191/json&label=Bugs+found&query=$.bugs_count&color=red) ![](https://img.shields.io/badge/dynamic/json?url=http://de1.hashbang.sh:7191/json&label=running_instance_version&query=$.running_version&color=purple)
+
 I'm already running an instace of this bot on hashbang server for my blog at [pcworms.ir](pcworms.ir). So if the bot bugs, it will be displayed live here
 I wrote a module that reports exceptions or any custom message and counts them, then I can show the number of bugs of a running server and also build-state and then track and fix bugs. The bug reporter is off by default, but if you are interested you can save the bugs to a local file `bugs.json` in offline mode, or run the bug report http server in online mode to see them through a http server (click on [bugs or build at top](http://de1.hashbang.sh:7191) to see an example). The default configuration of the http bug reporter is saved in `Bug-reporter.conf` but you can add your own config file to server config file (`user-config.conf`).
 
