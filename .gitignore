@@ -134,4 +134,4 @@ db.lmdb/
 *.mdb
 strings.json
 bugs.json
-user-config.conf
+user-config.*

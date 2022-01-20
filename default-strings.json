@@ -33,12 +33,15 @@
         "time-limit-error": "Sorry, I can not answer you right now because of time limitation between two request, try again 2 mins later.",
         "unknown": "Unknown command",
         "unknown-msg": "Sorry, I can't chat with anyone right now!",
-        "edited-message": "Sorry this bot can not handle edited messages, please resend your message"
+        "edited-message": "Sorry this bot can not handle edited messages, please resend your message",
+        "read-more": "read more ...",
+        "image-link": "Open image URL",
+        "goto-post": "Read this article"
     },
     "fa-ir": {
         "welcome": [
             "سلام، من ربات متن باز ",
-            "(Telegram RSS Bot)[https://github.com/bsimjoo/Telegram_RSS_bot] ",
+            "[Telegram RSS Bot](https://github.com/bsimjoo/Telegram_RSS_bot) ",
             "هستم و توسط ",
             "[BSimjoo](https://github.com/bsimjoo)",
             "نوشته شده ام\\. این پیام پیشفرض ربات است",
@@ -47,9 +50,14 @@
             "تغییر دهد\\."
         ],
         "group-intro": [
-            "سلام، من ربات وبلاگ ",
-            "[PCWorms🐛💻](http://pcworms\\.blog\\.ir)",
-            " هستم و حالا اینجا چیکار می کنم؟\\! من اینجام تا شما رو از آخرین مطالب وبلاگ با خبر کنم"
+            "سلام، من ربات متن باز ",
+            "[Telegram RSS Bot](https://github.com/bsimjoo/Telegram_RSS_bot) ",
+            "هستم و توسط ",
+            "[BSimjoo](https://github.com/bsimjoo)",
+            "نوشته شده ام\\. این پیام پیشفرض ربات است",
+            "صاحب این ربات می تواند این پیام را در فایل ",
+            "strings\\.json",
+            "تغییر دهد\\."
         ],
         "new-feed": "🆕♨️پست جدید بر روی وبلاگ:",
         "last-feed": "آخرین پست وبلاگ:",
@@ -74,6 +82,9 @@
         "time-limit-error": ".با عرض پوزش اکنون به دلیل محدودیت زمان بین تو درخواست نمی توانم به شما پاسخ دهم. بعد از دو دقیقه مجددا تلاش کنید",
         "unknown": "متأسفم، دستوری که وارد کردید صحیح نیست",
         "unknown-msg": "!متأسفم، در حال حاضر نمی توانم با کاربران چت کنم",
-        "edited-message": "با عرض پوزش این ربات در حال حاضر از ویرایش پیام پشتیبانی نمی کند"
+        "edited-message": "با عرض پوزش این ربات در حال حاضر از ویرایش پیام پشتیبانی نمی کند",
+        "read-more": "بیشتر بخوانید ...",
+        "image-link": "باز کردن لینک تصویر",
+        "goto-post": "خواندن این مطلب"
     }
 }
