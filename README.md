@@ -1,9 +1,9 @@
 <p align="center">
 <a href="https://bsimjoo.github.io/Telegram-RSS-Bot"><img alt="Telegram-RSS-Bot" src="docs/logo.png"></a>
  <p align="center">
- <a href="http://de1.hashbang.sh:7191"><img alt="" src="https://img.shields.io/badge/dynamic/json?url=http://de1.hashbang.sh:7191/json&label=build&query=$.build_state&color=white"></a>
+ <a href="#beetle-bug-reporter"><img alt="" src="https://img.shields.io/badge/dynamic/json?url=http://de1.hashbang.sh:7191/json&label=build&query=$.build_state&color=white"></a>
  <a href="http://de1.hashbang.sh:7191"><img alt="Reported bugs from pcworms_bot project" src="https://img.shields.io/badge/dynamic/json?url=http://de1.hashbang.sh:7191/json&label=%F0%9F%90%9E+Bugs&query=$.bugs_count&color=red"></a>
- <a href="http://de1.hashbang.sh:7191/gotocommit"><img alt="goto running version" src="https://img.shields.io/badge/dynamic/json?url=http://de1.hashbang.sh:7191/json&label=running&query=$.running_version&color=purple"></a>
+ <a href="http://de1.hashbang.sh:7191/gotocommit"><img alt="goto running version" src="https://img.shields.io/badge/dynamic/json?url=http://de1.hashbang.sh:7191/json&label=running instance version&query=$.running_version&color=purple"></a>
  <a href="https://github.com/bsimjoo/Telegram-RSS-Bot/labels/bug"><img alt="Bug issue" src="https://img.shields.io/github/issues-raw/bsimjoo/Telegram-RSS-Bot/bug?color=red"></a>
  <a href="https://github.com/bsimjoo/Telegram-RSS-Bot/labels/todo"><img src="https://img.shields.io/github/issues-raw/bsimjoo/Telegram-RSS-Bot/todo?color=orange&label=TODOs"></a> 
  <a href="https://www.codefactor.io/repository/github/bsimjoo/telegram-rss-bot"><img alt="CodeFactor Grade" src="https://img.shields.io/codefactor/grade/github/bsimjoo/Telegram-RSS-Bot"></a>
@@ -114,8 +114,10 @@ If you're about to reset database you can use `-r {database}` argument to reset 
 
 <b>:warning: <font color="orange">This action can not be undone</font></b>
 
-# :beetle: Bug Reporter ![](https://img.shields.io/badge/dynamic/json?url=http://de1.hashbang.sh:7191/json&label=Bugs+found&query=$.bugs_count&color=red)
-I wrote a module that reports exceptions or any custom message and counts them, then I can show the number of bugs of a running server and also build state and then track and fix bugs. The bug reporter is off by default, but if you are interested you can save the bugs to a local file `bugs.json` in offline mode, or run the bug report http server in online mode to see them through a http server (click on [bugs or build at top](http://de1.hashbang.sh:7191) to see an example). The default configuration of the http bug reporter is saved in `Bug-reporter.conf` but you can add your own config file to server config file (`user-config.conf`).
+# :beetle: Bug Reporter
+![](https://img.shields.io/badge/dynamic/json?url=http://de1.hashbang.sh:7191/json&label=Bugs+found&query=$.bugs_count&color=red)![](https://img.shields.io/badge/dynamic/json?url=http://de1.hashbang.sh:7191/json&label=running instance version&query=$.running_version&color=purple)
+I'm already running an instace of this bot on hashbang server for my blog at [pcworms.ir](pcworms.ir). So if the bot bugs, it will be displayed live here
+I wrote a module that reports exceptions or any custom message and counts them, then I can show the number of bugs of a running server and also build-state and then track and fix bugs. The bug reporter is off by default, but if you are interested you can save the bugs to a local file `bugs.json` in offline mode, or run the bug report http server in online mode to see them through a http server (click on [bugs or build at top](http://de1.hashbang.sh:7191) to see an example). The default configuration of the http bug reporter is saved in `Bug-reporter.conf` but you can add your own config file to server config file (`user-config.conf`).
 
 **Notice** Don't forget to install `cherrypy` before using http bug reporter. use `python3 -m pip install cherrypy`
 
