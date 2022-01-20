@@ -108,6 +108,7 @@ class BotHandler:
         self.__check = True
         self.bug_reporter = bug_reporter if bug_reporter else None
         self.debug = False
+        self.logger = logging.getLogger('RSSBot')
 
         if debug:
             Handlers.add_debuging_handlers(self)
@@ -144,7 +145,7 @@ class BotHandler:
 
     def log_bug(self, exc:Exception, msg='', report = True, disable_notification = False,**args):
         info = BugReporter.exception(msg, exc, report = self.bug_reporter and report)
-        logging.exception(msg, exc_info=exc)
+        self.logger.exception(msg, exc_info=exc)
         msg = html.escape(msg)
         escaped_info = {k:html.escape(str(v)) for k,v in info.items()}
         message = (
@@ -200,7 +201,9 @@ class BotHandler:
 
     @retry(10)
     def get_feeds(self):
+        self.logger.info('Getting feeds')
         with urlopen(self.feed_configs['source']) as f:
+            self.logger.info('Got feeds')
             return f.read().decode('utf-8')
 
     def summarize(self, soup:Soup, max_length, read_more):
@@ -250,6 +253,7 @@ class BotHandler:
         
         soup_page = Soup(feeds_page, self.feed_configs.get('feed-format', 'xml'))
         feeds_list = soup_page.select(self.feed_configs['feeds-selector'])
+        self.logger.info(f'Got {len(feeds_list)} feeds')
         title, link, content, time = None, None, None, None
         for feed in feeds_list[index:]:
             try:
@@ -282,12 +286,15 @@ class BotHandler:
                             continue
                 
                 time_selector = self.feed_configs['time-selector']
-                if time_selector:
-                    # date-selector could be None (null)
-                    if self.feed_configs['time-attribute']:
-                        time = str(feed.select_one(time_selector).attrs[self.feed_configs['time-attribute']])
-                    else:
-                        time = str(feed.select_one(time_selector).text)
+                # date-selector could not be None (null)
+                if self.feed_configs['time-attribute']:
+                    time = str(feed.select_one(time_selector).attrs[self.feed_configs['time-attribute']])
+                else:
+                    time = str(feed.select_one(time_selector).text)
+
+                if time is None:
+                    self.logger.error('The feed does not have a date, which means that the "date-selector" is not configured correctly')
+                    self.logger.info('The feed was\n'+str(feed))
                 
                 content_selector = self.feed_configs['content-selector']
                 if content_selector:
@@ -310,6 +317,7 @@ class BotHandler:
 
     def render_feed(self, feed: dict, header: str):
         title = feed['title']
+        self.logger.debug(f'Rendering feed {title}')
         post_link = feed['link']
         content = feed['content']
         messages = [{
@@ -333,6 +341,7 @@ class BotHandler:
                 content = self.purge(content)
                 images = content.find_all('img')
                 first = True
+                self.logger.debug(f'Found {len(images)} images')
 
                 if not len(images):
                     content, overflow = self.summarize(content, self.MAX_MSG_LEN, self.get_string('read-more'))
@@ -452,20 +461,20 @@ class BotHandler:
 
     def check_new_feed(self):
         last_date = self.get_data('last-feed-date', DB = self.data_db)
-        latest_date = last_date
+        new_date = last_date
         for feed in self.read_feed():
-            feed_date = parse_date(feed['date']) if feed['date'] else None
-            if feed_date is not None and (last_date is None or latest_date < feed_date):  # if feed_date is not None and last_date not exist or last feed's date is older than the new one
-                self.set_data('last-feed-date', feed_date, DB = self.data_db)
-                latest_date = feed_date
-            if feed_date is None or (last_date is not None and last_date < feed_date):
+            date = parse_date(feed['date']) if feed['date'] else None
+            if date is None or last_date is not None and last_date < date:
+                new_date = max(date, new_date)
+                self.logger.info(f'Sending new feed. date: {date}')
                 messages = self.render_feed(feed, header= self.get_string('new-feed'))
                 self.send_feed(messages, self.iter_all_chats())
-                if feed_date is None or last_date is None:
-                    break   #just send last feed
-            else:
-                break   #no new feed
+            if date is None or date <= last_date:
+                self.logger.info('No more new feeds')
+                break
+        self.set_data('last-feed-date', new_date, DB = self.data_db)
         if self.__check:
+            self.logger.info(f'Checking for new feeds in {self.interval} seconds')
             self.check_thread = Timer(self.interval, self.check_new_feed)
             self.check_thread.start()
 

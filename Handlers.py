@@ -198,6 +198,7 @@ def add_admin_handlers(server: BotHandler):
                     server.check_thread.join()
                 server.check_thread = Timer(server.interval, server.check_new_feed)
                 server.check_thread.start()
+                server.logger.info('Interval changed to '+str(server.interval))
                 server.set_data(
                     'interval', server.interval, DB = server.data_db)
         else:
@@ -795,12 +796,14 @@ def add_users_handlers(server: BotHandler):
             if c.user_data['time'] > datetime.now():
                 u.message.reply_text(server.get_string('time-limit-error'))
                 return
+        wait_msg = u.message.reply_animation(open("wait animation.tgs", 'rb'))
         server.send_feed(
             server.render_feed(
                 next(server.read_feed(0)),
                 server.get_string('last-feed')
             ),
             chats = [(u.effective_chat.id, c.chat_data)])
+        wait_msg.delete()
         c.user_data['time'] = datetime.now() + timedelta(minutes = 2)      #The next request is available 2 minutes later
     
     @dispatcher_decorators.commandHandler(command = 'help')
