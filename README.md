@@ -63,7 +63,7 @@ run `python main.py -h` to get help about available arguments.
 # :busts_in_silhouette: Access levels
 There are three levels of access for the bot. (Owner, Admins, Users)
 
-## :princess: Owner
+## :crown: Owner
 The person who runs bot-server and has telegram-bot token. He usually has access to source code and Databases.
 Owner can also change source of feeds but default source is `http://pcworms.blog.ir/rss` read [Installation at top](arrow_down-installation)
 
@@ -93,7 +93,7 @@ Owner will Receive a message with admin information and accept/decline buttons.
 - Get a list of all chats with username, full-name and ... (except profile photo and phone number)
 - Change the interval between each check for a new post
 
-### Users can:
+### :adult: Users can:
 - Get last feed
 - *No more option*
 
