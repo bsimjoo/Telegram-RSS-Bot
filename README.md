@@ -65,7 +65,7 @@ There are three levels of access for the bot. (Owner, Admins, Users)
 
 ## :crown: Owner
 The person who runs bot-server and has telegram-bot token. He usually has access to source code and Databases.
-Owner can also change source of feeds but default source is `http://pcworms.blog.ir/rss` read [Installation at top](arrow_down-installation)
+Owner can also change source of feeds but default source is `http://pcworms.ir/rss` read [Installation at top](arrow_down-installation)
 
 ### How the owner is identified
 Owner (bot call him as lord!) can identify himself using the token he received previously from @botfather as follow
@@ -128,5 +128,5 @@ the "Telegram-RSS-Bot" logo and any parts thereof are Copyright (©) 2021 by BSi
 
 ---
 Using [python-telegram-bot](https://github.com/python-telegram-bot/python-telegram-bot) api
-this project began for [pcworms.blog.ir](http://pcworms.blog.ir) weblog, but now it is available for everyone. you can see customized version at [pcworms/PCworms_Bot](https://github.com/pcworms/PCworms_Bot)
+this project began for [pcworms.ir](http://pcworms.ir) weblog, but now it is available for everyone. you can see customized version at [pcworms/PCworms_Bot](https://github.com/pcworms/PCworms_Bot)
 ###### this is my first telegram bot!
