@@ -1,5 +1,8 @@
 <p align="center">
-<a href="https://bsimjoo.github.io/Telegram-RSS-Bot"><img alt="Telegram-RSS-Bot" src="docs/logo.png"></a>
+<a align="center" href="https://bsimjoo.github.io/Telegram-RSS-Bot"><img alt="Telegram-RSS-Bot" src="docs/logo.png"></a>
+  <p align="center"><img src="https://img.shields.io/badge/ARCHIVED-red?style=for-the-badge&logo=AdBlock"></p>
+  <h1 align="center" color="red">This project had stopped contributing on 05/17/2022 and was rebased at <a href="https://github.com/bsimjoo/telegram-post-bot">telegram-post-bot</a><h1>
+<h2 align="center">It is highly recommended to stop forking this repo and see the <a href="https://github.com/bsimjoo/telegram-post-bot">telegram-post-bot repository</a></h2>
  <p align="center">
  <a href="#beetle-bug-reporter"><img alt="" src="https://img.shields.io/badge/dynamic/json?url=http://de1.hashbang.sh:7191/json&label=build&query=$.build_state&color=white"></a>
  <a href="http://de1.hashbang.sh:7191"><img alt="Reported bugs from pcworms_bot project" src="https://img.shields.io/badge/dynamic/json?url=http://de1.hashbang.sh:7191/json&label=%F0%9F%90%9E+Bugs&query=$.bugs_count&color=red"></a>
